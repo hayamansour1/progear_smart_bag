@@ -1,0 +1,58 @@
+lib/
+├─ main.dart
+├─ core/
+│  ├─ constants/
+│  │   ├─ app_colors.dart
+│  │   ├─ app_sizes.dart
+│  │   └─ app_text_styles.dart
+│  ├─ services/
+│  │   ├─ supabase_client.dart   # API مع Supabase
+│  │   └─ ble_service.dart       # Bluetooth (flutter_blue_plus)
+│  ├─ utils/
+│  │   ├─ validators.dart
+│  │   └─ show_snackbar.dart
+│  └─ routing/
+│      └─ app_router.dart
+│
+├─ features/
+│  ├─ onboarding/
+│  │   └─ ui/get_started_screen.dart
+│
+│  ├─ auth/
+│  │   ├─ ui/sign_in_screen.dart
+│  │   ├─ ui/register_screen.dart
+│  │   ├─ ui/auth_gate.dart
+│  │   ├─ data/auth_repository.dart
+│  │   └─ logic/auth_controller.dart
+│
+│  ├─ bag/   # كل شيء له علاقة بالاتصال بالشنطة
+│  │   ├─ ui/
+│  │   │   ├─ connecting_sheet.dart
+│  │   │   ├─ connect_failed_sheet.dart
+│  │   │   ├─ connect_success_sheet.dart
+│  │   │   └─ connect_instructions_sheet.dart
+│  │   ├─ data/bag_repository.dart
+│  │   └─ logic/bag_controller.dart
+│
+│  ├─ weight/
+│  │   ├─ ui/reset_weight_sheet.dart
+│  │   ├─ ui/weight_gauge.dart
+│  │   ├─ data/weight_repository.dart
+│  │   └─ logic/weight_controller.dart
+│
+│  └─ home/
+│      ├─ ui/home_screen.dart
+│      └─ widgets/
+│          ├─ bag_card.dart
+│          ├─ weight_card.dart
+│          ├─ missing_alert_card.dart
+│          └─ battery_card.dart
+│
+├─ ui_components/
+│  ├─ app_button.dart
+│  ├─ background_container.dart
+│  ├─ app_card.dart
+│  └─ app_title.dart
+│
+└─ data/models/
+    └─ user_model.dart

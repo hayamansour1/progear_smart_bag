@@ -1,0 +1,222 @@
+-- ProGear schema bootstrap
+-- Safe to run multiple times
+BEGIN;
+
+-- =============================
+-- Tables
+-- =============================
+
+CREATE TABLE IF NOT EXISTS public.esp32_controller (
+  "controllerID"      TEXT PRIMARY KEY,
+  "expectedWeight"    DOUBLE PRECISION NOT NULL DEFAULT 0,
+  "currentWeight"     DOUBLE PRECISION NOT NULL DEFAULT 0,
+  "userID"            UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  inserted_at         TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.weight_sensor (
+  "sensorID"      TEXT PRIMARY KEY,
+  "weightValue"   DOUBLE PRECISION NOT NULL,
+  "controllerID"  TEXT NOT NULL REFERENCES public.esp32_controller("controllerID") ON DELETE CASCADE,
+  inserted_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.notification (
+  "notificationID"  TEXT PRIMARY KEY,
+  "message"         TEXT NOT NULL,
+  "timestamp"       TIMESTAMPTZ NOT NULL DEFAULT now(),
+  "controllerID"    TEXT REFERENCES public.esp32_controller("controllerID") ON DELETE SET NULL,
+  "userID"          UUID REFERENCES auth.users(id) ON DELETE CASCADE
+);
+
+-- =============================
+-- Indexes (optional but recommended)
+-- =============================
+--CREATE INDEX IF NOT EXISTS idx_esp32_controller_user
+  --ON public.esp32_controller("userID");
+
+--CREATE INDEX IF NOT EXISTS idx_weight_sensor_controller
+  --ON public.weight_sensor("controllerID");
+
+--CREATE INDEX IF NOT EXISTS idx_notification_user
+  --ON public.notification("userID");
+
+--CREATE INDEX IF NOT EXISTS idx_notification_controller
+  --ON public.notification("controllerID");
+
+-- =============================
+-- Row Level Security (RLS) + Policies
+-- =============================
+
+-- Controllers
+ALTER TABLE public.esp32_controller ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='esp32_controller' AND policyname='select own controllers'
+  ) THEN
+    CREATE POLICY "select own controllers"
+    ON public.esp32_controller
+    FOR SELECT
+    USING ("userID" = auth.uid());
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='esp32_controller' AND policyname='insert own controllers'
+  ) THEN
+    CREATE POLICY "insert own controllers"
+    ON public.esp32_controller
+    FOR INSERT
+    WITH CHECK ("userID" = auth.uid());
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='esp32_controller' AND policyname='update own controllers'
+  ) THEN
+    CREATE POLICY "update own controllers"
+    ON public.esp32_controller
+    FOR UPDATE
+    USING ("userID" = auth.uid())
+    WITH CHECK ("userID" = auth.uid());
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='esp32_controller' AND policyname='delete own controllers'
+  ) THEN
+    CREATE POLICY "delete own controllers"
+    ON public.esp32_controller
+    FOR DELETE
+    USING ("userID" = auth.uid());
+  END IF;
+END$$;
+
+-- Weight sensors (gate via owner controller)
+ALTER TABLE public.weight_sensor ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE policyname='select sensors via own controllers'
+      AND tablename='weight_sensor' AND schemaname='public'
+  ) THEN
+    CREATE POLICY "select sensors via own controllers"
+    ON public.weight_sensor
+    FOR SELECT
+    USING (EXISTS (
+      SELECT 1 FROM public.esp32_controller c
+      WHERE c."controllerID" = public.weight_sensor."controllerID"
+        AND c."userID" = auth.uid()
+    ));
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE policyname='write sensors via own controllers'
+      AND tablename='weight_sensor' AND schemaname='public'
+  ) THEN
+    CREATE POLICY "write sensors via own controllers"
+    ON public.weight_sensor
+    FOR INSERT
+    WITH CHECK (EXISTS (
+      SELECT 1 FROM public.esp32_controller c
+      WHERE c."controllerID" = public.weight_sensor."controllerID"
+        AND c."userID" = auth.uid()
+    ));
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE policyname='update sensors via own controllers'
+      AND tablename='weight_sensor' AND schemaname='public'
+  ) THEN
+    CREATE POLICY "update sensors via own controllers"
+    ON public.weight_sensor
+    FOR UPDATE
+    USING (EXISTS (
+      SELECT 1 FROM public.esp32_controller c
+      WHERE c."controllerID" = public.weight_sensor."controllerID"
+        AND c."userID" = auth.uid()
+    ))
+    WITH CHECK (EXISTS (
+      SELECT 1 FROM public.esp32_controller c
+      WHERE c."controllerID" = public.weight_sensor."controllerID"
+        AND c."userID" = auth.uid()
+    ));
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE policyname='delete sensors via own controllers'
+      AND tablename='weight_sensor' AND schemaname='public'
+  ) THEN
+    CREATE POLICY "delete sensors via own controllers"
+    ON public.weight_sensor
+    FOR DELETE
+    USING (EXISTS (
+      SELECT 1 FROM public.esp32_controller c
+      WHERE c."controllerID" = public.weight_sensor."controllerID"
+        AND c."userID" = auth.uid()
+    ));
+  END IF;
+END$$;
+
+-- Notifications (owned directly or via owned controller)
+ALTER TABLE public.notification ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE policyname='select own notifications'
+      AND tablename='notification' AND schemaname='public'
+  ) THEN
+    CREATE POLICY "select own notifications"
+    ON public.notification
+    FOR SELECT
+    USING (
+      "userID" = auth.uid()
+      OR EXISTS (
+        SELECT 1 FROM public.esp32_controller c
+        WHERE c."controllerID" = public.notification."controllerID"
+          AND c."userID" = auth.uid()
+      )
+    );
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE policyname='insert own notifications'
+      AND tablename='notification' AND schemaname='public'
+  ) THEN
+    CREATE POLICY "insert own notifications"
+    ON public.notification
+    FOR INSERT
+    WITH CHECK (
+      "userID" = auth.uid()
+      OR EXISTS (
+        SELECT 1 FROM public.esp32_controller c
+        WHERE c."controllerID" = public.notification."controllerID"
+          AND c."userID" = auth.uid()
+      )
+    );
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE policyname='update own notifications'
+      AND tablename='notification' AND schemaname='public'
+  ) THEN
+    CREATE POLICY "update own notifications"
+    ON public.notification
+    FOR UPDATE
+    USING ("userID" = auth.uid())
+    WITH CHECK ("userID" = auth.uid());
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE policyname='delete own notifications'
+      AND tablename='notification' AND schemaname='public'
+  ) THEN
+    CREATE POLICY "delete own notifications"
+    ON public.notification
+    FOR DELETE
+    USING ("userID" = auth.uid());
+  END IF;
+END$$;
+
+COMMIT;

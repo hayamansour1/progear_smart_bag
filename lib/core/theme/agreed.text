@@ -1,0 +1,259 @@
+import 'package:flutter/material.dart';
+
+class ProGearBackground extends StatelessWidget {
+  final Widget child;
+  const ProGearBackground({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        // خلفية أساسية
+        Container(color: const Color.fromARGB(255, 30, 29, 29)),
+
+        // خطوط grid
+        // CustomPaint(
+        //   size: MediaQuery.of(context).size,
+        //   painter: GridPainter(),
+        // ),
+
+        // دوائر متدرجة (Glow)
+        Positioned(
+          top: -100,
+          left: -90,
+          child: Container(
+            width: 400,
+            height: 400,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  Color.fromARGB(66, 51, 139, 202), // المركز
+                  Color.fromARGB(9, 51, 139, 202), // 30% وسط
+                  Color(0x00338ACA), // 0% عند الحواف (شفاف بنفس اللون)
+                ],
+                stops: [0.0, 0.40, 1.0],
+                radius: 0.85,
+              ),
+            ),
+          ),
+        ),
+        Positioned(
+          bottom: -120,
+          right: -80,
+          child: Container(
+            width: 280,
+            height: 280,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  Color.fromARGB(186, 41, 75, 199), // الأخضر
+                  Color.fromARGB(0, 0, 0, 0),
+                ],
+                radius: 0.8,
+              ),
+            ),
+          ),
+        ),
+
+        // محتوى الشاشة
+        child,
+      ],
+    );
+  }
+}
+
+/// يرسم خطوط Grid بسيطة
+class GridPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.05)
+      ..strokeWidth = 1;
+
+    const step = 80.0; // المسافة بين الخطوط
+
+    // خطوط رأسية
+    for (double x = 0; x < size.width; x += step) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+    }
+
+    // خطوط أفقية
+    for (double y = 0; y < size.height; y += step) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+
+
+
+
+=========================================================================
+=========================================================================
+=========================================================================
+=========================================================================
+=========================================================================
+=========================================================================
+=========================================================================
+=========================================================================
+=========================================================================
+=========================================================================
+=========================================================================
+=========================================================================
+
+
+
+import 'package:flutter/material.dart';
+import '../constants/app_colors.dart';
+
+class ProGearBackground extends StatelessWidget {
+  final Widget child;
+  const ProGearBackground({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        // خلفية أساسية
+        Container(color: AppColors.background),
+
+        // 🔵 Glow أزرق فاتح أعلى يسار
+        Positioned(
+          left: -180,
+          top: -320,
+          child: Container(
+            width: 420,
+            height: 420,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: const Color(0xFF338ACA).withValues(alpha: 0.0),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF338ACA).withValues(alpha: 0.55),
+                  blurRadius: 260, // كل ما زاد صار أنعم
+                  spreadRadius: 140, // مدى الانتشار
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // Black Glow
+        Align(
+          alignment: Alignment.center,
+          child: Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: const Color(0xFF121212).withValues(alpha: 0.0),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF121212).withValues(alpha: 0.55),
+                  blurRadius: 260, // كل ما زاد صار أنعم
+                  spreadRadius: 140, // مدى الانتشار
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // Black Glow 2
+        Positioned(
+          right: 60,
+          top: 180,
+          child: Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color:
+                  const Color.fromARGB(255, 10, 10, 10).withValues(alpha: 0.0),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color.fromARGB(255, 0, 0, 0)
+                      .withValues(alpha: 0.90),
+                  blurRadius: 260, // كل ما زاد صار أنعم
+                  spreadRadius: 140, // مدى الانتشار
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // Black Glow 3
+        Positioned(
+          left: 60,
+          bottom: 180,
+          child: Container(
+            width: 150,
+            height: 150,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: const Color.fromARGB(255, 0, 0, 0).withValues(alpha: 0.0),
+              boxShadow: [
+                BoxShadow(
+                  color:
+                      const Color.fromARGB(255, 0, 0, 0).withValues(alpha: 0.9),
+                  blurRadius: 260, // كل ما زاد صار أنعم
+                  spreadRadius: 140, // مدى الانتشار
+                ),
+              ],
+            ),
+          ),
+        ),
+        // Black Glow 3
+        Positioned(
+          left: 60,
+          bottom: 180,
+          child: Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color:
+                  const Color.fromARGB(255, 235, 36, 36).withValues(alpha: 0.0),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color.fromARGB(255, 227, 17, 17)
+                      .withValues(alpha: 0.9),
+                  blurRadius: 260, // كل ما زاد صار أنعم
+                  spreadRadius: 140, // مدى الانتشار
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // 🔵 Glow أزرق داكن (294BC7) أسفل يمين
+        Positioned(
+          right: -160,
+          bottom: -200,
+          child: Container(
+            width: 560,
+            height: 560,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: const Color(0xFF294BC7).withValues(alpha: 0.0),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF294BC7).withValues(alpha: 0.55),
+                  blurRadius: 280,
+                  spreadRadius: 160,
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // المحتوى
+        child,
+      ],
+    );
+  }
+}
