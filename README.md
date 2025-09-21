@@ -1,5 +1,5 @@
 
-````markdown
+
 # ProGear Smart Bag
 
 A Flutter application for the graduation project - Smart Bag with Bluetooth integration and Supabase backend.
