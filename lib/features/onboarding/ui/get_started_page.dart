@@ -18,9 +18,8 @@ class GetStartedPage extends StatelessWidget {
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final h = constraints.maxHeight;
-                final isCompact = h < 520; // وضع لاندسكيب أو شاشة صغيرة
+                final isCompact = h < 520;
 
-                // نسخة اللاندسكيب / الارتفاع الصغير
                 if (isCompact) {
                   return SingleChildScrollView(
                     padding: EdgeInsets.only(
@@ -65,7 +64,6 @@ class GetStartedPage extends StatelessWidget {
                   );
                 }
 
-                // نسخة البورتريه (نفس مسافات الكود السابق اللي أرسلتيه)
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [

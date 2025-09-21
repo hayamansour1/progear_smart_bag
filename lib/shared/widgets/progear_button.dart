@@ -11,7 +11,7 @@ class ProGearButton extends StatelessWidget {
   final ProGearButtonVariant variant;
   final ProGearButtonSize size;
   final bool expanded;
-  final Widget? leading; // أيقونة اختيارية
+  final Widget? leading;
   final Widget? trailing;
 
   const ProGearButton.primary({

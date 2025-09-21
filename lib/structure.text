@@ -6,7 +6,7 @@ lib/
 │  │   ├─ app_sizes.dart
 │  │   └─ app_text_styles.dart
 │  ├─ services/
-│  │   ├─ supabase_client.dart   # API مع Supabase
+│  │   ├─ supabase_client.dart   # API with Supabase
 │  │   └─ ble_service.dart       # Bluetooth (flutter_blue_plus)
 │  ├─ utils/
 │  │   ├─ validators.dart
