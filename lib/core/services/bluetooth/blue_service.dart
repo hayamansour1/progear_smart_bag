@@ -22,6 +22,6 @@ abstract class BlueService {
   /// [isConnected] check if bluetooth device is connected
   bool isConnected(BluetoothDevice device);
 
-  //
+  /// [readCharacteristic] read characteristic of bluetooth device
   Stream<List<int>> readCharacteristic(BluetoothCharacteristic characteristic);
 }

@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:progear_smart_bag/core/app_keys.dart';
+import 'package:progear_smart_bag/core/services/bluetooth/blue_service_impl.dart';
+import 'package:progear_smart_bag/features/bag/controllers/bluetooth_controller.dart';
+import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/theme/app_theme.dart';
-import 'core/routing/app_router.dart'; 
+import 'core/routing/app_router.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -13,9 +16,14 @@ Future<void> main() async {
     url: dotenv.env['SUPABASE_URL']!,
     anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
   );
-  runApp(const ProGearApp());
+  runApp(
+    MultiProvider(providers: [
+      ChangeNotifierProvider(
+        create: (context) => BluetoothController(BlueServiceImpl()),
+      ),
+    ], child: const ProGearApp()),
+  );
 }
-
 
 class ProGearApp extends StatelessWidget {
   const ProGearApp({super.key});
@@ -30,4 +38,3 @@ class ProGearApp extends StatelessWidget {
     );
   }
 }
-

@@ -20,6 +20,12 @@ dependencies:
   go_router: ^14.2.0
   # blue bluetooth
   flutter_blue_plus: ^2.0.0
+  # permission app
+  permission_handler: ^12.0.1
+  # open settings app
+  app_settings: ^6.1.1
+  # manage state provider
+  provider: ^6.1.5+1
 
 dev_dependencies:
   flutter_test:
@@ -28,5 +34,5 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - assets/
+    - assets/images/
     - .env
