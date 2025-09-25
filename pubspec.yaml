@@ -26,6 +26,12 @@ dependencies:
   app_settings: ^6.1.1
   # manage state provider
   provider: ^6.1.5+1
+  # Custom loading
+  flutter_spinkit: ^5.2.2
+  # Custom Dialog
+  awesome_dialog: ^3.2.1
+  # Custom Toast
+  fluttertoast: ^9.0.0
 
 dev_dependencies:
   flutter_test:

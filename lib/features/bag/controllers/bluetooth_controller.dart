@@ -2,6 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:fluttertoast/fluttertoast.dart';
+import 'package:progear_smart_bag/core/constants/app_colors.dart';
+import 'package:progear_smart_bag/core/constants/app_sizes.dart';
 
 import 'package:progear_smart_bag/core/services/bluetooth/blue_service_impl.dart';
 
@@ -18,6 +21,15 @@ class BluetoothController extends ChangeNotifier {
   bool _isScanning = false;
   bool get isScanning => _isScanning;
 
+  // loading for connection
+  final Map<String, bool> _loadingDevices = {};
+  bool isDeviceLoading(String deviceId) => _loadingDevices[deviceId] ?? false;
+
+  void _setDeviceLoading(String deviceId, bool isLoading) {
+    _loadingDevices[deviceId] = isLoading;
+    notifyListeners();
+  }
+
   // handle bluetooth state on or off
   BluetoothAdapterState _adapterState = BluetoothAdapterState.unknown;
   BluetoothAdapterState get adapterState => _adapterState;
@@ -25,6 +37,10 @@ class BluetoothController extends ChangeNotifier {
   // handle devices
   List<ScanResult> _devices = [];
   List<ScanResult> get devices => _devices;
+
+  // handle connected devices
+  BluetoothDevice? _connectedDevice;
+  BluetoothDevice? get connectedDevice => _connectedDevice;
 
   // handle subscription state scanning
   StreamSubscription<List<ScanResult>>? _scanSubscription;
@@ -56,6 +72,16 @@ class BluetoothController extends ChangeNotifier {
       _isScanning = true;
       notifyListeners();
       await _blueServiceImpl.startScan();
+
+      // TimeOut
+      Future.delayed(Duration(minutes: 1), () async {
+        if (_isScanning) {
+          await _blueServiceImpl.stopScan();
+          _isScanning = false;
+          notifyListeners();
+        }
+      });
+
       // check state scanning stop
     } catch (e) {
       // stop loading
@@ -63,6 +89,11 @@ class BluetoothController extends ChangeNotifier {
       notifyListeners();
       rethrow;
     }
+  }
+
+  /// [getConnectedDevices] get connected devices
+  Future<List<BluetoothDevice>> getConnectedDevices() async {
+    return await FlutterBluePlus.connectedDevices;
   }
 
   /// [stopScan] stop scanning
@@ -79,19 +110,56 @@ class BluetoothController extends ChangeNotifier {
   /// [connectDevice] connect device
   Future<void> connectDevice(BluetoothDevice device) async {
     try {
+      _setDeviceLoading(device.remoteId.str, true);
+      // step one disconnect another device
+      for (var result in _devices) {
+        if (await result.device.isConnected &&
+            result.device.remoteId != device.remoteId) {
+          await _blueServiceImpl.disconnect(result.device);
+        }
+      }
+
       await _blueServiceImpl.connect(device);
+      // step two wait device connected
+      await device.connectionState
+          .firstWhere((s) => s == BluetoothConnectionState.connected)
+          .timeout(const Duration(seconds: 5), onTimeout: () {
+        Fluttertoast.showToast(
+            msg: "Connection failed. Please try again",
+            toastLength: Toast.LENGTH_LONG,
+            gravity: ToastGravity.BOTTOM,
+            timeInSecForIosWeb: 1,
+            backgroundColor: AppColors.backgroundLight,
+            textColor: Colors.white,
+            fontSize: AppSizes.fontLg);
+        throw TimeoutException('Connection timeout');
+      });
+      _connectedDevice = device;
+      notifyListeners();
     } catch (e) {
       debugPrint('Connect error: $e');
+
+      _connectedDevice = null;
+      notifyListeners();
       rethrow;
+    } finally {
+      _setDeviceLoading(device.remoteId.str, false);
     }
   }
 
   /// [disconnectDevice] disconnect device
   Future<void> disconnectDevice(BluetoothDevice device) async {
     try {
+      _setDeviceLoading(device.remoteId.str, true);
       await _blueServiceImpl.disconnect(device);
+      if (_connectedDevice?.remoteId == device.remoteId) {
+        _connectedDevice = null;
+        notifyListeners();
+      }
     } catch (e) {
       rethrow;
+    } finally {
+      _setDeviceLoading(device.remoteId.str, false);
     }
   }
 

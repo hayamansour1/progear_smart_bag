@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:app_settings/app_settings.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -28,7 +30,7 @@ class BlueServiceImpl implements BlueService {
     // step two ensure bluetooth on
     await _ensureBluetoothOn();
     // step three start scan
-    await FlutterBluePlus.startScan(timeout: const Duration(minutes: 1));
+    await FlutterBluePlus.startScan();
   }
 
   @override
@@ -40,7 +42,11 @@ class BlueServiceImpl implements BlueService {
   @override
   Future<void> connect(BluetoothDevice device) async {
     try {
-      await device.connect(autoConnect: false, license: License.free);
+      await device
+          .connect(autoConnect: true, license: License.free, mtu: null)
+          .timeout(Duration(seconds: 30), onTimeout: () {
+        throw TimeoutException("Connection timeout");
+      });
     } catch (error) {
       if (error.toString().contains('already connected')) {
         // await device.disconnect();

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:progear_smart_bag/core/constants/app_colors.dart';
 import 'package:progear_smart_bag/core/constants/app_sizes.dart';
 import 'package:progear_smart_bag/features/bag/controllers/bluetooth_controller.dart';
@@ -23,14 +24,45 @@ class ShowBluetoothDevices extends StatelessWidget {
           child: Column(
             spacing: AppSizes.md,
             children: [
-              // List of devices
-              Container(
-                width: 50,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(10),
-                ),
+              // Line divider
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                      style: ButtonStyle(
+                        padding: WidgetStatePropertyAll(EdgeInsets.zero),
+                        minimumSize: WidgetStatePropertyAll(Size.zero),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      padding: EdgeInsets.zero,
+                      onPressed: () => Navigator.pop(context),
+                      icon: Icon(Icons.close)),
+                  Container(
+                    width: (AppSizes.xl * 2),
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  // loading scan
+                  if (controller.isScanning)
+                    SpinKitCircle(
+                      color: AppColors.primaryBlue,
+                      size: 25,
+                    )
+                  else
+                    IconButton(
+                      style: ButtonStyle(
+                        padding: WidgetStatePropertyAll(EdgeInsets.zero),
+                        minimumSize: WidgetStatePropertyAll(Size.zero),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      padding: EdgeInsets.zero,
+                      onPressed: controller.startScan,
+                      icon: Icon(Icons.refresh),
+                    ),
+                ],
               ),
 
               Text(
@@ -70,21 +102,34 @@ class ShowBluetoothDevices extends StatelessWidget {
                               ),
                               title: Text(device.platformName.isNotEmpty
                                   ? device.platformName
-                                  : device.remoteId.toString()),
-                              subtitle: Text(device.remoteId.toString()),
-                              trailing: device.isConnected
-                                  ? const Icon(
-                                      Icons.link_off,
-                                      color: Colors.red,
+                                  : device.remoteId.str),
+                              subtitle:
+                                  device.isConnected ? Text('Connected') : null,
+                              trailing: controller
+                                      .isDeviceLoading(device.remoteId.str)
+                                  ? SizedBox(
+                                      width: 40,
+                                      child: SpinKitWave(
+                                        size: 30,
+                                        type: SpinKitWaveType.end,
+                                        color: Colors.grey[300],
+                                      ),
                                     )
-                                  : const Icon(Icons.link, color: Colors.green),
-                              onTap: () {
+                                  : device.isConnected
+                                      ? const Icon(
+                                          Icons.link_off,
+                                          color: Colors.red,
+                                        )
+                                      : const Icon(Icons.link,
+                                          color: Colors.green),
+                              onTap: () async {
                                 if (device.isConnected) {
-                                  controller.disconnectDevice(device);
+                                  await controller.disconnectDevice(device);
+                                  // Navigator.pop(context); // close sheet
                                 } else {
-                                  controller.connectDevice(device);
+                                  await controller.connectDevice(device);
+                                  // Navigator.pop(context); // close sheet
                                 }
-                                Navigator.pop(context); // close sheet
                               },
                             ),
                           );

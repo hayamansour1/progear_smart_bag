@@ -7,7 +7,7 @@ import 'package:progear_smart_bag/shared/widgets/progear_button.dart';
 
 // widgets
 import '../widgets/home_header.dart';
-import '../widgets/bag_status_card.dart';
+import '../../../bag/presentation/widgets/bag_status_card.dart';
 import '../widgets/weight_card.dart';
 import '../widgets/two_up_cards.dart';
 
@@ -27,7 +27,7 @@ class HomeDashboardPage extends StatelessWidget {
             children: [
               const HomeHeader(),
               const SizedBox(height: AppSizes.lg),
-              const BagStatusCard(connected: true),
+              const BagStatusCard(),
               const SizedBox(height: AppSizes.lg),
               const WeightCard(currentKg: 5.6, maxKg: 8),
               const SizedBox(height: AppSizes.lg),
