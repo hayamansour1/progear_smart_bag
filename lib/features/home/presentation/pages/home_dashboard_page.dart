@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+// import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:progear_smart_bag/core/constants/app_sizes.dart';
-import 'package:progear_smart_bag/core/services/bluetooth/blue_service_impl.dart';
+// import 'package:progear_smart_bag/core/services/bluetooth/blue_service_impl.dart';
 import 'package:progear_smart_bag/core/theme/progear_background.dart';
 import 'package:progear_smart_bag/shared/widgets/progear_button.dart';
 
