@@ -45,5 +45,9 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>App needs Bluetooth access to connect to smart bag</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>App needs Bluetooth access to connect to smart bag</string>
 </dict>
 </plist>

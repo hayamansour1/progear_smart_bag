@@ -1,8 +1,17 @@
 import 'package:flutter/material.dart';
 
+// RBG Colors
+// Red 12
+// Blue 12
+// green 12
+// hex color 16 digits (0-9, A-F)
+
 class AppColors {
   // Background
   static const Color background = Color(0xFF121212); // #121212
+
+  // background light
+  static const Color backgroundLight = Color(0xFF1E1E1E);
 
   // Primary button
   static const Color primaryBlue = Color.fromARGB(186, 41, 75, 199); // #294BC7
@@ -21,9 +30,9 @@ class AppColors {
   // BLE status gradients (radial)
   // Green: inner #29C739 @41%, outer #142561 @0%
   static const Color bleGreenInner41 = Color(0x6929C739); // 41% opacity
-  static const Color bleGreenOuter0  = Color(0x00142561); // 0%
+  static const Color bleGreenOuter0 = Color(0x00142561); // 0%
 
   // Red: inner #C72929 @49%, outer #142561 @0%
-  static const Color bleRedInner49   = Color(0x7DC72929); // 49% opacity
-  static const Color bleRedOuter0    = Color(0x00142561); // 0%
+  static const Color bleRedInner49 = Color(0x7DC72929); // 49% opacity
+  static const Color bleRedOuter0 = Color(0x00142561); // 0%
 }

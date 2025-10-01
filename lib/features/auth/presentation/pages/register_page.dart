@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:progear_smart_bag/core/constants/app_images.dart';
 
 import 'package:progear_smart_bag/core/theme/progear_background.dart';
 import 'package:progear_smart_bag/core/constants/app_sizes.dart';
@@ -185,7 +186,7 @@ class _RegisterPageState extends State<RegisterPage> {
                 child: Opacity(
                   opacity: .9,
                   child: Image.asset(
-                    'assets/bag_logo.png',
+                    AppImages.logoBag,
                     height: 28,
                   ),
                 ),
