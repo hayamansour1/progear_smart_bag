@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:progear_smart_bag/core/constants/app_images.dart';
 import 'package:progear_smart_bag/core/constants/app_sizes.dart';
 import 'package:progear_smart_bag/shared/widgets/progear_button.dart';
 import '../../../core/constants/app_text_styles.dart';
@@ -29,7 +30,7 @@ class GetStartedPage extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Image.asset('assets/progear.png',
+                        Image.asset(AppImages.progear,
                             height: 28, fit: BoxFit.contain),
                         const SizedBox(height: 20),
                         const Text("Welcome!", style: AppTextStyles.heading),
@@ -69,7 +70,7 @@ class GetStartedPage extends StatelessWidget {
                   children: [
                     const SizedBox(height: 120),
                     Image.asset(
-                      'assets/progear.png',
+                      AppImages.progear,
                       height: 30,
                       fit: BoxFit.contain,
                     ),
