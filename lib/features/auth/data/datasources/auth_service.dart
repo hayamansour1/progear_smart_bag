@@ -70,21 +70,21 @@ class AuthService {
   Stream<Session?> authSessionStream() =>
       _supabase.auth.onAuthStateChange.map((e) => e.session);
 
-  Future<void> sendPasswordReset(String email) async {
-    try {
-      await _supabase.auth.resetPasswordForEmail(
-        email,
-        redirectTo:
-            'https://hayamansour1.github.io/progear_smart_bag/reset-password.html',
-      );
-    } on AuthException catch (e) {
-      _debugLog(e);
-      throw AuthFailure(_mapAuthError(e), code: e.code);
-    } catch (e) {
-      _debugLog(e);
-      throw AuthFailure('Could not send reset email. Please try again.');
-    }
+Future<void> sendPasswordReset(String email) async {
+  try {
+    await _supabase.auth.resetPasswordForEmail(
+      email,
+      redirectTo: 'https://hayamansour1.github.io/progear_smart_bag/reset-password.html',
+    );
+  } on AuthException catch (e) {
+    _debugLog(e);
+    throw AuthFailure(_mapAuthError(e), code: e.code);
+  } catch (e) {
+    _debugLog(e);
+    throw AuthFailure('Could not send reset email. Please try again.');
   }
+}
+
 
   /// يحدّث كلمة المرور للمستخدم الحالي (يتطلب جلسة صالحة).
   Future<void> updatePassword(String newPassword) async {
