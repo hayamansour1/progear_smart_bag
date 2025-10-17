@@ -6,6 +6,7 @@ import 'package:progear_smart_bag/core/theme/progear_background.dart';
 import 'package:progear_smart_bag/core/constants/app_sizes.dart';
 import 'package:progear_smart_bag/core/constants/app_text_styles.dart';
 import 'package:progear_smart_bag/core/utils/validators.dart';
+import 'package:progear_smart_bag/features/auth/presentation/widgets/forgot_password_sheet.dart';
 
 import 'package:progear_smart_bag/shared/widgets/progear_button.dart';
 import 'package:progear_smart_bag/shared/widgets/progear_text_field.dart';
@@ -113,7 +114,14 @@ class _LoginPageState extends State<LoginPage> {
                     alignment: Alignment.centerLeft,
                     child: TextButton(
                       onPressed: () {
-                        // TODO: context.go('/forgot-password');
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.vertical(
+                                  top: Radius.circular(12))),
+                          builder: (_) => const ForgotPasswordSheet(),
+                        );
                       },
                       child: const Text("Forget password?"),
                     ),

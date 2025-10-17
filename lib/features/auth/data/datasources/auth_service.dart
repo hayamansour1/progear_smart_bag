@@ -3,7 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuthFailure implements Exception {
   final String message;
-  final String? code; 
+  final String? code;
   AuthFailure(this.message, {this.code});
 
   @override
@@ -15,7 +15,9 @@ class AuthService {
 
   // ---------------- Basic ops ----------------
   Future<AuthResponse> signInWithEmailPassword(
-      String email, String password) async {
+    String email,
+    String password,
+  ) async {
     try {
       return await _supabase.auth
           .signInWithPassword(email: email, password: password);
@@ -29,7 +31,9 @@ class AuthService {
   }
 
   Future<AuthResponse> signUpWithEmailPassword(
-      String email, String password) async {
+    String email,
+    String password,
+  ) async {
     try {
       return await _supabase.auth.signUp(email: email, password: password);
     } on AuthException catch (e) {
@@ -66,15 +70,32 @@ class AuthService {
   Stream<Session?> authSessionStream() =>
       _supabase.auth.onAuthStateChange.map((e) => e.session);
 
-  Future<void> sendPasswordReset(String email) async {
+Future<void> sendPasswordReset(String email) async {
+  try {
+    await _supabase.auth.resetPasswordForEmail(
+      email,
+      redirectTo: 'https://<username>.github.io/progear_smart_bag/reset-password.html',
+    );
+  } on AuthException catch (e) {
+    _debugLog(e);
+    throw AuthFailure(_mapAuthError(e), code: e.code);
+  } catch (e) {
+    _debugLog(e);
+    throw AuthFailure('Could not send reset email. Please try again.');
+  }
+}
+
+
+  /// يحدّث كلمة المرور للمستخدم الحالي (يتطلب جلسة صالحة).
+  Future<void> updatePassword(String newPassword) async {
     try {
-      await _supabase.auth.resetPasswordForEmail(email);
+      await _supabase.auth.updateUser(UserAttributes(password: newPassword));
     } on AuthException catch (e) {
       _debugLog(e);
-      throw AuthFailure(_mapAuthError(e));
+      throw AuthFailure(_mapAuthError(e), code: e.code);
     } catch (e) {
       _debugLog(e);
-      throw AuthFailure('Could not send reset email. Please try again.');
+      throw AuthFailure('Failed to update password. Please try again.');
     }
   }
 
