@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:progear_smart_bag/core/constants/app_sizes.dart';
-import 'package:progear_smart_bag/core/utils/snackbar_utils.dart';
-import 'package:progear_smart_bag/features/auth/data/datasources/auth_service.dart';
 import 'package:progear_smart_bag/core/constants/app_text_styles.dart';
-
+import 'package:progear_smart_bag/core/utils/validators.dart';
+import 'package:progear_smart_bag/core/utils/snackbar_utils.dart';
+import 'package:progear_smart_bag/shared/widgets/progear_button.dart';
+import 'package:progear_smart_bag/shared/widgets/progear_text_field.dart';
+import 'package:progear_smart_bag/features/auth/data/datasources/auth_service.dart';
 
 class ForgotPasswordSheet extends StatefulWidget {
   const ForgotPasswordSheet({super.key});
@@ -13,26 +15,24 @@ class ForgotPasswordSheet extends StatefulWidget {
 }
 
 class _ForgotPasswordSheetState extends State<ForgotPasswordSheet> {
-  final _formKey = GlobalKey<FormState>();
-  final _emailCtrl = TextEditingController();
+  final _form = GlobalKey<FormState>();
+  final _email = TextEditingController();
   bool _busy = false;
-
   final _auth = AuthService();
 
   Future<void> _send() async {
-    final form = _formKey.currentState;
-    if (form == null || !form.validate()) return;
+    if (!_form.currentState!.validate()) return;
 
     setState(() => _busy = true);
     try {
-      await _auth.sendPasswordReset(_emailCtrl.text.trim());
+      await _auth.sendPasswordReset(_email.text.trim());
       if (!mounted) return;
-      showSuccessSnack(context, 'Reset email sent. Check your inbox.');
-      Navigator.of(context).pop(); // اغلاق الشيت بعد الارسال
+      Navigator.of(context).pop(); // أغلق الشيت
+      showSuccessSnack(context, 'Reset link sent. Check your email.');
     } on AuthFailure catch (e) {
       if (!mounted) return;
       showErrorSnack(context, e.message);
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
       showErrorSnack(context, 'Could not send reset email. Please try again.');
     } finally {
@@ -42,55 +42,42 @@ class _ForgotPasswordSheetState extends State<ForgotPasswordSheet> {
 
   @override
   void dispose() {
-    _emailCtrl.dispose();
+    _email.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSizes.lg),
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.only(
+          left: AppSizes.lg,
+          right: AppSizes.lg,
+          top: AppSizes.lg,
+          bottom: AppSizes.lg + MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: Form(
+          key: _form,
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const Text('Reset password', style: AppTextStyles.heading2),
               const SizedBox(height: AppSizes.md),
-              const Text('Reset password', style: AppTextStyles.heading),
-              const SizedBox(height: AppSizes.md),
-              Form(
-                key: _formKey,
-                child: TextFormField(
-                  controller: _emailCtrl,
-                  keyboardType: TextInputType.emailAddress,
-                  autofillHints: const [AutofillHints.email],
-                  decoration: const InputDecoration(
-                    labelText: 'Email',
-                    hintText: 'you@example.com',
-                  ),
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) return 'Please enter email';
-                    if (!v.contains('@')) return 'Enter a valid email';
-                    return null;
-                  },
-                ),
+              ProGearTextField(
+                controller: _email,
+                label: 'Email',
+                hintText: 'you@example.com',
+                keyboardType: TextInputType.emailAddress,
+                validator: AppValidators.email,
               ),
               const SizedBox(height: AppSizes.lg),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _busy ? null : _send,
-                  child: _busy ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Send reset email'),
-                ),
+              ProGearButton.primary(
+                label: _busy ? 'Sending…' : 'Send reset email',
+                onPressed: _busy ? null : _send,
+                expanded: true,
               ),
               const SizedBox(height: AppSizes.sm),
-              TextButton(
-                onPressed: _busy ? null : () => Navigator.of(context).pop(),
-                child: const Text('Cancel'),
-              ),
             ],
           ),
         ),

@@ -117,9 +117,11 @@ class _LoginPageState extends State<LoginPage> {
                         showModalBottomSheet(
                           context: context,
                           isScrollControlled: true,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.vertical(
-                                  top: Radius.circular(12))),
+                          useSafeArea: true,
+                          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                          shape: const RoundedRectangleBorder(
+                            borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                          ),
                           builder: (_) => const ForgotPasswordSheet(),
                         );
                       },
