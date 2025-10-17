@@ -72,7 +72,11 @@ class AuthService {
 
 Future<void> sendPasswordReset(String email) async {
   try {
-    await _supabase.auth.resetPasswordForEmail(email);
+    await _supabase.auth.resetPasswordForEmail(
+      email,
+      redirectTo:
+          'https://hayamansour1.github.io/progear_smart_bag/reset-password.html',
+    );
   } on AuthException catch (e) {
     _debugLog(e);
     throw AuthFailure(_mapAuthError(e), code: e.code);
@@ -81,6 +85,7 @@ Future<void> sendPasswordReset(String email) async {
     throw AuthFailure('Could not send reset email. Please try again.');
   }
 }
+
 
 
 
