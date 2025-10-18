@@ -1,5 +1,6 @@
 // import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:progear_smart_bag/features/auth/presentation/pages/Reset_With_Code_Page.dart';
 
 // pages
 import 'package:progear_smart_bag/features/onboarding/ui/get_started_page.dart';
@@ -7,7 +8,6 @@ import 'package:progear_smart_bag/features/auth/presentation/pages/login_page.da
 import 'package:progear_smart_bag/features/auth/presentation/pages/register_page.dart';
 import 'package:progear_smart_bag/features/home/presentation/pages/home_dashboard_page.dart';
 import 'package:progear_smart_bag/features/auth/presentation/pages/auth_gate.dart';
-import 'package:progear_smart_bag/features/auth/presentation/pages/reset_with_code_page.dart'; // ← أضِيفي الصفحة
 
 final appRouter = GoRouter(
   debugLogDiagnostics: true,
