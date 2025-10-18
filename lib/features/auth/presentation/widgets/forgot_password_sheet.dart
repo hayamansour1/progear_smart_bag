@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
 import 'package:progear_smart_bag/core/constants/app_sizes.dart';
 import 'package:progear_smart_bag/core/constants/app_text_styles.dart';
 import 'package:progear_smart_bag/core/utils/validators.dart';
@@ -25,10 +27,28 @@ class _ForgotPasswordSheetState extends State<ForgotPasswordSheet> {
 
     setState(() => _busy = true);
     try {
-      await _auth.sendPasswordReset(_email.text.trim());
+      final email = _email.text.trim();
+
+      await _auth.sendPasswordReset(email);
       if (!mounted) return;
-      Navigator.of(context).pop(); // أغلق الشيت
-      showSuccessSnack(context, 'Reset link sent. Check your email.');
+
+      // خزّن الراوتر قبل إغلاق الشيت حتى نستخدمه بعد الإغلاق
+      final router = GoRouter.of(context);
+
+      // أقفل الشيت
+      Navigator.of(context).pop();
+
+      // ادفع صفحة إدخال الكود + مرّر الإيميل
+      Future.microtask(() {
+        router.push('/reset-with-code?email=${Uri.encodeComponent(email)}');
+      });
+
+      // ملاحظة صغيرة
+      showSuccessSnack(
+        // استخدم أقرب سياق متاح (لو ما كان فيه، ما يضر)
+        router.routerDelegate.navigatorKey.currentContext ?? context,
+        'We emailed you a recovery code.',
+      );
     } on AuthFailure catch (e) {
       if (!mounted) return;
       showErrorSnack(context, e.message);
@@ -70,6 +90,8 @@ class _ForgotPasswordSheetState extends State<ForgotPasswordSheet> {
                 hintText: 'you@example.com',
                 keyboardType: TextInputType.emailAddress,
                 validator: AppValidators.email,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => _busy ? null : _send(),
               ),
               const SizedBox(height: AppSizes.lg),
               ProGearButton.primary(
