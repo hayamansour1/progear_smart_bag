@@ -63,7 +63,7 @@ class AppTheme {
           }),
           foregroundColor: WidgetStateProperty.resolveWith((states) {
             if (states.contains(WidgetState.disabled)) {
-              return scheme.onPrimary.withValues(alpha: .38);
+              return scheme.onPrimary.withValues(alpha:  .38);
             }
             return scheme.onPrimary;
           }),

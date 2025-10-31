@@ -32,7 +32,6 @@ PasswordValidationResult validatePassword(String value, {int minLen = 8}) {
   if (!hasDigit) errors.add('Add a number');
   if (!hasSpecial) errors.add('Add a special character');
 
-  // نحسب القوة 0..4
   int score = 0;
   if (hasMin) score++;
   if (hasLower && hasUpper) score++;

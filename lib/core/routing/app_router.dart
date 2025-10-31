@@ -1,4 +1,3 @@
-// import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:progear_smart_bag/features/auth/presentation/pages/Reset_With_Code_Page.dart';
 
@@ -8,46 +7,34 @@ import 'package:progear_smart_bag/features/auth/presentation/pages/login_page.da
 import 'package:progear_smart_bag/features/auth/presentation/pages/register_page.dart';
 import 'package:progear_smart_bag/features/home/presentation/pages/home_dashboard_page.dart';
 import 'package:progear_smart_bag/features/auth/presentation/pages/auth_gate.dart';
+import 'package:progear_smart_bag/features/activity/presentation/pages/activity_page.dart';
 
 final appRouter = GoRouter(
   debugLogDiagnostics: true,
   initialLocation: '/auth-gate',
   routes: [
-    // Auth gate decides where to go: Home or Login
-    GoRoute(
-      path: '/auth-gate',
-      builder: (context, state) => const AuthGate(),
-    ),
-
-    // Onboarding
-    GoRoute(
-      path: '/',
-      builder: (context, state) => const GetStartedPage(),
-    ),
-
-    // Auth
-    GoRoute(
-      path: '/login',
-      builder: (context, state) => const LoginPage(),
-    ),
-    GoRoute(
-      path: '/register',
-      builder: (context, state) => const RegisterPage(),
-    ),
-
-    // Reset with OTP code (يستقبل email اختياريًا للملء التلقائي)
+    GoRoute(path: '/auth-gate', builder: (c, s) => const AuthGate()),
+    GoRoute(path: '/', builder: (c, s) => const GetStartedPage()),
+    GoRoute(path: '/login', builder: (c, s) => const LoginPage()),
+    GoRoute(path: '/register', builder: (c, s) => const RegisterPage()),
     GoRoute(
       path: '/reset-with-code',
-      builder: (context, state) {
-        final email = state.uri.queryParameters['email'];
-        return ResetWithCodePage(prefilledEmail: email);
-      },
+      builder: (c, s) => ResetWithCodePage(
+        prefilledEmail: s.uri.queryParameters['email'],
+      ),
     ),
+    GoRoute(path: '/home', builder: (c, s) => const HomeDashboardPage()),
 
-    // Home
+
+    // Activity
     GoRoute(
-      path: '/home',
-      builder: (context, state) => const HomeDashboardPage(),
+      path: '/activity',
+      builder: (c, s) {
+        final cid = s.uri.queryParameters['cid'];
+        return (cid == null || cid.isEmpty)
+            ? const HomeDashboardPage()
+            : ActivityPage(controllerID: cid);
+      },
     ),
   ],
 );

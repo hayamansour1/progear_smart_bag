@@ -31,6 +31,11 @@ class AppTextStyles {
     // fontWeight: FontWeight.w400,
     color: Colors.white,
   );
+  static const TextStyle secondarybody = TextStyle(
+    fontSize: AppSizes.fontMd,
+    // fontWeight: FontWeight.w400,
+    color: Colors.white,
+  );
 
   static const TextStyle secondary = TextStyle(
     fontSize: AppSizes.fontLg,
@@ -45,7 +50,7 @@ class AppTextStyles {
   );
 }
 
-/// Linear gradient للنص (من #338ACA إلى #194464 شفاف)
+/// Linear gradient  ( #338ACA to #194464 )
 // Shader textLinearGradient(Rect bounds) {
 //   return const LinearGradient(
 //     begin: Alignment.centerLeft,

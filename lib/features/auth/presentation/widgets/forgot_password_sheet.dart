@@ -32,20 +32,15 @@ class _ForgotPasswordSheetState extends State<ForgotPasswordSheet> {
       await _auth.sendPasswordReset(email);
       if (!mounted) return;
 
-      // خزّن الراوتر قبل إغلاق الشيت حتى نستخدمه بعد الإغلاق
       final router = GoRouter.of(context);
 
-      // أقفل الشيت
       Navigator.of(context).pop();
 
-      // ادفع صفحة إدخال الكود + مرّر الإيميل
       Future.microtask(() {
         router.push('/reset-with-code?email=${Uri.encodeComponent(email)}');
       });
 
-      // ملاحظة صغيرة
       showSuccessSnack(
-        // استخدم أقرب سياق متاح (لو ما كان فيه، ما يضر)
         router.routerDelegate.navigatorKey.currentContext ?? context,
         'We emailed you a recovery code.',
       );

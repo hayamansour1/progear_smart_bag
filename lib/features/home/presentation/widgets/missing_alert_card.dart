@@ -6,6 +6,8 @@ import 'package:progear_smart_bag/core/constants/app_colors.dart';
 class MissingAlertCard extends StatelessWidget {
   const MissingAlertCard({super.key});
 
+  // TODO: implement dynamic content based on missing items
+
   @override
   Widget build(BuildContext context) {
     return Container(

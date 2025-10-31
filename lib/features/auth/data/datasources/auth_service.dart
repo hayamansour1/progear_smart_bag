@@ -62,10 +62,8 @@ class AuthService {
       _supabase.auth.onAuthStateChange.map((e) => e.session);
 
   // ---------------- Password Recovery via OTP ----------------
-  /// يرسل إيميل فيه كود (Token) لإعادة التعيين
   Future<void> sendRecoveryCode(String email) async {
     try {
-      // لا نمرر redirectTo — نحافظ على الفلو داخل التطبيق
       await _supabase.auth.resetPasswordForEmail(email);
     } on AuthException catch (e) {
       _debugLog(e);
@@ -76,10 +74,9 @@ class AuthService {
     }
   }
 
-  /// alias للتوافق مع الاستدعاءات السابقة
+  /// alias
   Future<void> sendPasswordReset(String email) => sendRecoveryCode(email);
 
-  /// تحقّق من الكود ثم حدّث كلمة المرور — كلّه داخل التطبيق
   Future<void> verifyRecoveryCodeAndUpdatePassword({
     required String email,
     required String token,
@@ -103,7 +100,6 @@ class AuthService {
     }
   }
 
-  /// فقط للتحقّق المسبق من الكود (اختياري)
   Future<void> verifyRecoveryCodeOnly({
     required String email,
     required String token,
@@ -123,7 +119,6 @@ class AuthService {
     }
   }
 
-  /// تحديث كلمة المرور للمستخدم الحالي (يتطلب جلسة صالحة)
   Future<void> updatePassword(String newPassword) async {
     try {
       await _supabase.auth.updateUser(
@@ -148,7 +143,7 @@ class AuthService {
       status = int.tryParse(e.statusCode ?? '');
     }
 
-    // حالات OTP الشائعة
+    // OTP 
     if (code == 'otp_expired' || (msg.contains('otp') && msg.contains('expired'))) {
       return 'The code has expired. Please request a new one.';
     }

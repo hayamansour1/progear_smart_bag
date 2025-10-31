@@ -3,14 +3,22 @@ import 'package:progear_smart_bag/core/constants/app_sizes.dart';
 import 'package:progear_smart_bag/core/constants/app_text_styles.dart';
 import 'package:progear_smart_bag/core/constants/app_colors.dart';
 
+/// WeightCard
+/// Displays the current and expected bag weight (in grams).
+/// Currently uses dummy values until BLE/DB is fully integrated.
 class WeightCard extends StatelessWidget {
-  final double currentKg;
-  final double maxKg;
-  const WeightCard({super.key, required this.currentKg, required this.maxKg});
+  final double currentG;   // current bag weight (grams)
+  final double expectedG;  // expected reference weight (grams)
+
+  const WeightCard({
+    super.key,
+    required this.currentG,
+    required this.expectedG,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final ratio = (currentKg / maxKg).clamp(0.0, 1.0);
+    final ratio = (currentG / expectedG).clamp(0.0, 1.0);
 
     return Container(
       padding: const EdgeInsets.all(AppSizes.lg),
@@ -23,20 +31,25 @@ class WeightCard extends StatelessWidget {
         children: [
           const Text('Bag Weight', style: AppTextStyles.heading1),
           const SizedBox(height: AppSizes.md),
+
+          // Values (left = current, right = expected)
           Row(
             children: [
-              Text('${currentKg.toStringAsFixed(1)}',
+              Text(currentG.toStringAsFixed(1),
                   style: AppTextStyles.heading2),
               const SizedBox(width: 4),
-              Text('KG', style: AppTextStyles.secondary),
+              Text('g', style: AppTextStyles.secondary),
               const Spacer(),
-              Text('${maxKg.toStringAsFixed(0)}',
+              Text(expectedG.toStringAsFixed(1),
                   style: AppTextStyles.heading2),
               const SizedBox(width: 4),
-              Text('KG', style: AppTextStyles.secondary),
+              Text('g', style: AppTextStyles.secondary),
             ],
           ),
+
           const SizedBox(height: AppSizes.md),
+
+          // Progress bar
           ClipRRect(
             borderRadius: BorderRadius.circular(24),
             child: LinearProgressIndicator(
@@ -50,4 +63,16 @@ class WeightCard extends StatelessWidget {
       ),
     );
   }
+
+  // Example placeholder for future data binding.
+  //// ------------------------------------------------
+  // // TODO: When BLE is ready, replace constructor with:
+  // WeightCard(
+  //   currentG: context.watch<BluetoothController>().currentWeightG,
+  //   expectedG: context.watch<BluetoothController>().expectedWeightG,
+  // )
+  //
+  // // TEMP fallback for testing (replace when ready):
+  // const WeightCard(currentG: 5600, expectedG: 8000);
+  //// ------------------------------------------------
 }

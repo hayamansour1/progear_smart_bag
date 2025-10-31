@@ -137,6 +137,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.0.6"
+  cupertino_battery_indicator:
+    dependency: "direct main"
+    description:
+      name: cupertino_battery_indicator
+      sha256: b41fa6ac61e9b397cd8eea6e908292ef22f6d343b4ca9ad7b71871ea215a516b
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.2.1"
   cupertino_icons:
     dependency: "direct main"
     description:
@@ -344,6 +352,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.1.2"
+  intl:
+    dependency: "direct main"
+    description:
+      name: intl
+      sha256: d6f56758b7d3014a48af9701c085700aac781a92a87a62b1333b46d8879661cf
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.19.0"
   jwt_decode:
     dependency: transitive
     description:
@@ -633,7 +649,7 @@ packages:
     source: hosted
     version: "0.28.0"
   shared_preferences:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: shared_preferences
       sha256: "6e8bf70b7fef813df4e9a36f658ac46d107db4b4cfe1048b477d4e453a8159f5"

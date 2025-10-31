@@ -14,7 +14,7 @@ import 'package:progear_smart_bag/shared/widgets/progear_password_field.dart';
 
 import 'package:progear_smart_bag/features/auth/data/datasources/auth_service.dart'
     show AuthService, AuthFailure;
-import 'package:progear_smart_bag/core/utils/snackbar_utils.dart'; // showErrorSnack
+import 'package:progear_smart_bag/core/utils/snackbar_utils.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});

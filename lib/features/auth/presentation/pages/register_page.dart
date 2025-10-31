@@ -107,8 +107,9 @@ class _RegisterPageState extends State<RegisterPage> {
                             autofillHints: const [AutofillHints.name],
                             validator: (v) {
                               final value = v?.trim() ?? '';
-                              if (value.isEmpty)
+                              if (value.isEmpty) {
                                 return 'Please enter your name';
+                              }
                               if (value.length < 2) return 'Name is too short';
                               return null;
                             },
