@@ -41,11 +41,11 @@ All weight values are represented in **grams (g)**.
 | `SET_EXPECTED_WEIGHT:<value>` | `SET_EXPECTED_WEIGHT:20000` | Updates the expected (target) weight in grams. |
 | `RESET_WEIGHT` | `RESET_WEIGHT` | Performs a hardware-level tare operation (resets the scale). |
 | `GET_EXPECTED_WEIGHT` | `GET_EXPECTED_WEIGHT` | Requests the current expected weight stored in NVS memory. |
-
+ 
 **Notes:**
 - Commands are **plain text**, terminated by a newline character `\n`.  
 - Commands are **case-insensitive**, but uppercase is recommended for clarity.  
-
+ 
 ---
 
 ## 5. Messages (ESP32 → App)
@@ -61,11 +61,11 @@ All weight values are represented in **grams (g)**.
 - Messages are formatted as **JSON** for flexibility and readability.  
 - Each message ends with a newline (`\n`).  
 - The Flutter app parses these messages using the `BagParser` service.  
-
+ 
 ---
 
 ## 6. Synchronization Flow
-
+ 
 1. The Flutter app connects to the ESP32 device via BLE.  
 2. The app retrieves the latest `expectedWeight` from Supabase.  
 3. The app sends `SET_EXPECTED_WEIGHT:<value>` to ESP32.  
@@ -87,12 +87,12 @@ All weight values are represented in **grams (g)**.
 [ESP32] WEIGHT_DATA:{"g":20120.3}  
 [ESP32] WEIGHT_DATA:{"g":20110.8}  
 [ESP32] SESSION_FINAL:{"g":20100.0}
-
+ 
 ---
 
 ## 8. Error Handling and Recovery
-
-If ESP32 sends an error message such as:
+ 
+If ESP32 sends an error message such as: 
 
 ERROR:{"msg":"over_capacity"}
 
@@ -101,7 +101,7 @@ Then:
 - The current session continues unless the error type requires disconnection.  
 - If BLE connection is lost, the app automatically retries or notifies the user.  
 - All critical errors are logged locally for diagnostics.  
-
+ 
 ---
 
 ## 9. Integration Notes
@@ -118,7 +118,7 @@ This protocol integrates directly with the following Flutter modules:
 
 **Data Formats:**
 - App → ESP32: plain text commands.  
-- ESP32 → App: JSON messages.  
+- ESP32 → App: JSON messages.   
 
 ---
 
