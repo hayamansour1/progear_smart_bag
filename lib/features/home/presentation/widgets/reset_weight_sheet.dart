@@ -58,8 +58,7 @@ class _ResetWeightSheetState extends State<ResetWeightSheet> {
         final ts = row?['inserted_at'] as String?;
         _updatedAt = ts != null ? DateTime.tryParse(ts) : null;
       });
-    } catch (_) {
-    }
+    } catch (_) {}
   }
 
   /// Calls RPC to set expectedWeight = currentWeight, logs a notification,

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:progear_smart_bag/core/constants/app_sizes.dart';
 import 'package:progear_smart_bag/core/theme/progear_background.dart';
+import 'package:progear_smart_bag/features/bag/controllers/bluetooth_controller.dart';
+import 'package:progear_smart_bag/features/weight/logic/weight_controller.dart';
 import 'package:progear_smart_bag/shared/widgets/progear_button.dart';
+import 'package:provider/provider.dart';
 
 // widgets
 import '../widgets/home_header.dart';
@@ -19,9 +22,18 @@ class HomeDashboardPage extends StatefulWidget {
 
 class _HomeDashboardPageState extends State<HomeDashboardPage> {
   // When BLE is ready, ask BluetoothController for the real id:
-  // final controllerID = context.read<BluetoothController>().connectedDevice?.remoteId.str;
+  late String _controllerID;
   // TEMP for testing without BLE:
-  static const _controllerID = 'ctrl_14be0569';
+  // static const _controllerID = 'ctrl_14be0569';
+
+  @override
+  void initState() {
+    // TODO: check is BLE ready and update controllerID
+    super.initState();
+    _controllerID =
+        context.read<BluetoothController>().connectedDevice?.remoteId.str ??
+            'ctrl_14be0569';
+  }
 
   Future<void> _openResetSheet() async {
     final isLandscape =
@@ -50,7 +62,7 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
             builder: (ctx, scrollController) {
               return SingleChildScrollView(
                 controller: scrollController,
-                child: const ResetWeightSheet(
+                child: ResetWeightSheet(
                   controllerID: _controllerID,
                 ),
               );
@@ -58,7 +70,7 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
           );
         } else {
           // Portrait: normal compact sheet with swipe-down to dismiss
-          return const ResetWeightSheet(
+          return ResetWeightSheet(
             controllerID: _controllerID,
           );
         }
@@ -85,14 +97,14 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
               const SizedBox(height: AppSizes.lg),
 
               //  REAL (when BLE + expected weight are ready)
-              // WeightCard(
-              //   currentG: context.watch<WeightController>().currentG,
-              //   // TODO: replace with real expected grams from DB state
-              //   expectedG: 8000,
-              // ),
+              WeightCard(
+                currentG: context.watch<WeightController>().currentG,
+                // TODO: replace with real expected grams from DB state
+                expectedG: 8000,
+              ),
 
               //   TEMP fake grams for now (to keep UI running)
-              const WeightCard(currentG: 5600, expectedG: 8000),
+              // const WeightCard(currentG: 5600, expectedG: 8000),
 
               const SizedBox(height: AppSizes.lg),
               const TwoUpCards(),

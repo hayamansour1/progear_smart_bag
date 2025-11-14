@@ -50,12 +50,12 @@ Future<void> main() async {
             final ctrl = BatteryController(
               BagParser(),
               repository: repo,
-
               // REAL line (when Bluetooth is ready):
-              // controllerID: ctx.read<BluetoothController>().connectedDevice?.remoteId.str,
+              controllerID:
+                  ctx.read<BluetoothController>().connectedDevice?.remoteId.str,
 
               // TEMP fallback for testing (mock controllerID):
-              controllerID: 'ctrl_14be0569',
+              // controllerID: 'ctrl_14be0569',
             );
 
             // Hydrate last known battery status from DB before BLE is active.
@@ -71,10 +71,11 @@ Future<void> main() async {
               BagParser(),
 
               // REAL line (when Bluetooth is ready):
-              // controllerID: ctx.read<BluetoothController>().connectedDevice?.remoteId.str,
+              controllerID:
+                  ctx.read<BluetoothController>().connectedDevice?.remoteId.str,
 
               // TEMP fallback for testing (mock controllerID):
-              controllerID: 'ctrl_14be0569',
+              // controllerID: 'ctrl_14be0569',
             );
 
             // Load expectedWeight baseline from DB so UI has context before BLE.
@@ -122,5 +123,5 @@ class _ProGearAppState extends State<ProGearApp> {
       theme: AppTheme.darkTheme,
       routerConfig: appRouter,
     );
-    }
+  }
 }

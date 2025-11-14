@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:progear_smart_bag/features/bag/controllers/bluetooth_controller.dart';
+import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:progear_smart_bag/core/constants/app_sizes.dart';
@@ -10,8 +12,6 @@ import 'package:progear_smart_bag/core/constants/app_colors.dart';
 // For now, we keep a TEMP fallback id.
 // We also read/write a local unread flag via ActivitySeenStore.
 import 'package:progear_smart_bag/features/activity/data/activity_seen_store.dart';
-// import 'package:provider/provider.dart';
-// import 'package:progear_smart_bag/features/bag/controllers/bluetooth_controller.dart';
 
 class HomeHeader extends StatefulWidget {
   const HomeHeader({super.key});
@@ -23,7 +23,7 @@ class HomeHeader extends StatefulWidget {
 class _HomeHeaderState extends State<HomeHeader> {
   // FIX: initialize with empty string to avoid LateInitializationError during first build
   String _controllerID = '';
-  bool _unread = false; 
+  bool _unread = false;
 
   @override
   void initState() {
@@ -33,8 +33,9 @@ class _HomeHeaderState extends State<HomeHeader> {
 
   Future<String> _resolveControllerID(BuildContext context) async {
     // REAL line (when BLE is ready):
-    // final id = context.read<BluetoothController>().connectedDevice?.remoteId.str;
-    // if (id != null && id.isNotEmpty) return id;
+    final id =
+        context.read<BluetoothController>().connectedDevice?.remoteId.str;
+    if (id != null && id.isNotEmpty) return id;
 
     // TEMP fallback for testing:
     return 'ctrl_14be0569';
@@ -93,7 +94,7 @@ class _HomeHeaderState extends State<HomeHeader> {
         // Notifications --> Unified Activity Page
         _HeaderIcon(
           icon: Icons.notifications_outlined,
-          showDot: _unread, 
+          showDot: _unread,
           onTap: _openActivity,
         ),
         const SizedBox(width: 8),
