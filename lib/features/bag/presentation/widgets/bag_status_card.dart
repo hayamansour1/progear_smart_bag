@@ -31,7 +31,7 @@ class BagStatusCard extends StatelessWidget {
                   .disconnectDevice(controllerBluetooth.connectedDevice!);
               // Navigator.pop(context);
             },
-          )..show();
+          ).show();
         }
       },
       child: Container(

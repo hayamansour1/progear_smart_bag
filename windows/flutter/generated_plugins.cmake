@@ -5,7 +5,7 @@
 list(APPEND FLUTTER_PLUGIN_LIST
   app_links
   permission_handler_windows
-  rive_common
+  rive_native
   url_launcher_windows
 )
 

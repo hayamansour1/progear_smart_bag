@@ -92,8 +92,8 @@ class BluetoothController extends ChangeNotifier {
   }
 
   /// [getConnectedDevices] get connected devices
-  Future<List<BluetoothDevice>> getConnectedDevices() async {
-    return await FlutterBluePlus.connectedDevices;
+  List<BluetoothDevice> getConnectedDevices() {
+    return FlutterBluePlus.connectedDevices;
   }
 
   /// [stopScan] stop scanning

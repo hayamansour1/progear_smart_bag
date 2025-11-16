@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:progear_smart_bag/core/constants/app_sizes.dart';
 import 'package:progear_smart_bag/core/theme/progear_background.dart';
 import 'package:progear_smart_bag/features/bag/controllers/bluetooth_controller.dart';
+import 'package:progear_smart_bag/features/bag/presentation/widgets/alert_bag_connection.dart';
 import 'package:progear_smart_bag/features/weight/logic/weight_controller.dart';
 import 'package:progear_smart_bag/shared/widgets/progear_button.dart';
 import 'package:provider/provider.dart';
@@ -30,9 +31,21 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
   void initState() {
     // TODO: check is BLE ready and update controllerID
     super.initState();
-    _controllerID =
-        context.read<BluetoothController>().connectedDevice?.remoteId.str ??
-            'ctrl_14be0569';
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _controllerID =
+          context.read<BluetoothController>().connectedDevice?.remoteId.str ??
+              'ctrl_14be0569';
+      if (_controllerID.isEmpty || _controllerID == 'ctrl_14be0569') {
+        showDialog(
+            context: context,
+            builder: (context) {
+              return AlertBagConnection();
+            });
+      }
+    });
+
+    // TEMP for testing without BLE:
+    // _controllerID = 'ctrl_14be0569';
   }
 
   Future<void> _openResetSheet() async {

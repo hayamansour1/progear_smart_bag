@@ -53,7 +53,8 @@ class BatteryController extends ChangeNotifier {
   }
 
   /// Bind BLE notify characteristic to BagParser (called via BatteryBridge.bind)
-  Future<void> bindToCharacteristic(BluetoothCharacteristic characteristic) async {
+  Future<void> bindToCharacteristic(
+      BluetoothCharacteristic characteristic) async {
     await _parser.bind(characteristic);
     await _sub?.cancel();
     _sub = _parser.stream.listen(_onLine, onError: (e) {
@@ -131,7 +132,8 @@ class BatteryController extends ChangeNotifier {
     p ??= _extractInt(t, RegExp(r'(?:BAT|BATT|BATTERY)\s*[:=]\s*(\d{1,3})'));
     chg ??= _extractBool(
       t,
-      RegExp(r'(?:CHG|CHARGING)\s*[:=]\s*([01]|true|false)', caseSensitive: false),
+      RegExp(r'(?:CHG|CHARGING)\s*[:=]\s*([01]|true|false)',
+          caseSensitive: false),
     );
 
     if (p != null || chg != null) {
