@@ -127,7 +127,8 @@ class ShowBluetoothDevices extends StatelessWidget {
                                   await controller.disconnectDevice(device);
                                   // Navigator.pop(context); // close sheet
                                 } else {
-                                  await controller.connectDevice(device);
+                                  await controller.connectDevice(
+                                      device, context);
                                   // Navigator.pop(context); // close sheet
                                 }
                               },

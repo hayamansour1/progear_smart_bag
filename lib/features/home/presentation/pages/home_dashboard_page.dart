@@ -52,7 +52,7 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
     final isLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
 
-    final result = await showModalBottomSheet<bool>(
+    await showModalBottomSheet<bool>(
       context: context,
       useSafeArea: true,
       backgroundColor: Colors.transparent,

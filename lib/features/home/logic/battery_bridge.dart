@@ -6,31 +6,16 @@ import 'package:progear_smart_bag/features/home/logic/battery_controller.dart';
 
 /// BatteryBridge: simple static hook so BLE layer can bind/unbind easily.
 class BatteryBridge {
-  static BuildContext? _ctx;
-
-  /// Call once after Providers are built (in main.dart)
-  static void attachContext(BuildContext context) {
-    _ctx = context;
-  }
-
-  /// Call from ProGearApp.dispose()
-  static void detachContext() {
-    _ctx = null;
-  }
-
   /// Called by Bluetooth side when the correct characteristic is found.
-  static Future<void> bind(BluetoothCharacteristic ch) async {
-    final ctx = _ctx;
-    if (ctx == null) return;
-    final ctrl = ctx.read<BatteryController>();
+  static Future<void> bind(
+      BuildContext context, BluetoothCharacteristic ch) async {
+    final ctrl = context.read<BatteryController>();
     await ctrl.bindToCharacteristic(ch);
   }
 
   /// Called by Bluetooth side on disconnect.
-  static Future<void> unbind() async {
-    final ctx = _ctx;
-    if (ctx == null) return;
-    final ctrl = ctx.read<BatteryController>();
+  static Future<void> unbind(BuildContext context) async {
+    final ctrl = context.read<BatteryController>();
     await ctrl.unbind();
   }
 }

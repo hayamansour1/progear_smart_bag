@@ -15,11 +15,9 @@ import 'package:progear_smart_bag/features/bag/controllers/bluetooth_controller.
 import 'package:progear_smart_bag/core/services/parser/bag_parser.dart';
 import 'package:progear_smart_bag/features/home/data/battery_repository.dart';
 import 'package:progear_smart_bag/features/home/logic/battery_controller.dart';
-import 'package:progear_smart_bag/features/home/logic/battery_bridge.dart';
 
 // Weight
 import 'package:progear_smart_bag/features/weight/logic/weight_controller.dart';
-import 'package:progear_smart_bag/features/weight/logic/weight_bridge.dart';
 
 import 'package:progear_smart_bag/features/activity/data/activity_seen_store.dart';
 
@@ -44,6 +42,7 @@ Future<void> main() async {
         ),
 
         // --- Battery controller ---
+        // new design need when call supabase is bad
         ChangeNotifierProvider(
           create: (ctx) {
             final repo = BatteryRepository(Supabase.instance.client);
@@ -66,22 +65,8 @@ Future<void> main() async {
 
         // --- Weight controller (live grams via BLE) ---
         ChangeNotifierProvider(
-          create: (ctx) {
-            final ctrl = WeightController(
-              BagParser(),
-
-              // REAL line (when Bluetooth is ready):
-              controllerID:
-                  ctx.read<BluetoothController>().connectedDevice?.remoteId.str,
-
-              // TEMP fallback for testing (mock controllerID):
-              // controllerID: 'ctrl_14be0569',
-            );
-
-            // Load expectedWeight baseline from DB so UI has context before BLE.
-            ctrl.boot();
-            return ctrl;
-          },
+          // bag parser is a singleton for now
+          create: (_) => WeightController(BagParser()),
         ),
       ],
       child: const ProGearApp(),
@@ -100,18 +85,10 @@ class _ProGearAppState extends State<ProGearApp> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Bind bridges so the Bluetooth layer can attach/detach streams easily.
-      BatteryBridge.attachContext(context);
-      WeightBridge.attachContext(context);
-    });
   }
 
   @override
   void dispose() {
-    // detach bridges when the app widget is disposed
-    BatteryBridge.detachContext();
-    WeightBridge.detachContext();
     super.dispose();
   }
 

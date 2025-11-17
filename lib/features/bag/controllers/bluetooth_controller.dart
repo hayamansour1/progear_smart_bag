@@ -7,8 +7,11 @@ import 'package:progear_smart_bag/core/constants/app_colors.dart';
 import 'package:progear_smart_bag/core/constants/app_sizes.dart';
 
 import 'package:progear_smart_bag/core/services/bluetooth/blue_service_impl.dart';
+import 'package:progear_smart_bag/core/utils/logger.dart';
+import 'package:progear_smart_bag/features/weight/logic/weight_bridge.dart';
 
 class BluetoothController extends ChangeNotifier {
+  final _log = logger(BluetoothController);
   // blue service
   final BlueServiceImpl _blueServiceImpl;
 
@@ -59,7 +62,7 @@ class BluetoothController extends ChangeNotifier {
     });
 
     // following state scanning
-    _scanSubscription = _blueServiceImpl.ScanResults.listen((results) {
+    _scanSubscription = _blueServiceImpl.scanResults.listen((results) {
       _devices = results;
       // change state scanning and for ui reBuild
       notifyListeners();
@@ -108,12 +111,13 @@ class BluetoothController extends ChangeNotifier {
   }
 
   /// [connectDevice] connect device
-  Future<void> connectDevice(BluetoothDevice device) async {
+  Future<void> connectDevice(
+      BluetoothDevice device, BuildContext context) async {
     try {
       _setDeviceLoading(device.remoteId.str, true);
       // step one disconnect another device
       for (var result in _devices) {
-        if (await result.device.isConnected &&
+        if (result.device.isConnected &&
             result.device.remoteId != device.remoteId) {
           await _blueServiceImpl.disconnect(result.device);
         }
@@ -135,6 +139,8 @@ class BluetoothController extends ChangeNotifier {
         throw TimeoutException('Connection timeout');
       });
       _connectedDevice = device;
+      // step three get weight
+      if (context.mounted) await getWeight(context);
       notifyListeners();
     } catch (e) {
       debugPrint('Connect error: $e');
@@ -144,6 +150,20 @@ class BluetoothController extends ChangeNotifier {
       rethrow;
     } finally {
       _setDeviceLoading(device.remoteId.str, false);
+    }
+  }
+
+  /// [getWeight] get weight from device
+  Future<void> getWeight(BuildContext context) async {
+    // step_1: read characteristic
+    BluetoothCharacteristic? char =
+        await _blueServiceImpl.readCharacteristic(_connectedDevice!);
+
+    // step_2: bind weight controller
+    if (context.mounted && char != null) {
+      _log.i('apply bind');
+      await WeightBridge.bind(context, char,
+          controllerID: _connectedDevice!.remoteId.str);
     }
   }
 

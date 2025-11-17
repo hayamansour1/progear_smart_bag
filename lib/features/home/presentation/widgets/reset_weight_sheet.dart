@@ -20,7 +20,7 @@ import 'package:progear_smart_bag/shared/widgets/progear_toast.dart';
 
 class ResetWeightSheet extends StatefulWidget {
   /// NOTE: when BLE is ready, pass the real connected controller id from Bluetooth layer:
-  /// final controllerID = context.read<BluetoothController>().connectedDevice?.remoteId.str;
+  /// final controllerID = context.read`<BluetoothController>`().connectedDevice?.remoteId.str;
   /// For now we pass a fixed testing id from the caller (HomeDashboardPage).
   final String controllerID;
 

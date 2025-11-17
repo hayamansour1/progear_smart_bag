@@ -1,5 +1,5 @@
 import 'package:go_router/go_router.dart';
-import 'package:progear_smart_bag/features/auth/presentation/pages/Reset_With_Code_Page.dart';
+import 'package:progear_smart_bag/features/auth/presentation/pages/reset_With_Code_Page.dart';
 
 // pages
 import 'package:progear_smart_bag/features/onboarding/ui/get_started_page.dart';
@@ -24,7 +24,6 @@ final appRouter = GoRouter(
       ),
     ),
     GoRoute(path: '/home', builder: (c, s) => const HomeDashboardPage()),
-
 
     // Activity
     GoRoute(

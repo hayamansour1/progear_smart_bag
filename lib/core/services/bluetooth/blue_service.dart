@@ -7,8 +7,8 @@ abstract class BlueService {
   /// [stopScan] stop scanning for bluetooth devices
   Future<void> stopScan();
 
-  /// [ScanResults] stream of bluetooth devices found
-  Stream<List<ScanResult>> get ScanResults;
+  /// [scanResults] stream of bluetooth devices found
+  Stream<List<ScanResult>> get scanResults;
 
   /// [connect] connect to bluetooth device
   Future<void> connect(BluetoothDevice device);
@@ -23,5 +23,5 @@ abstract class BlueService {
   bool isConnected(BluetoothDevice device);
 
   /// [readCharacteristic] read characteristic of bluetooth device
-  Stream<List<int>> readCharacteristic(BluetoothCharacteristic characteristic);
+  Future<BluetoothCharacteristic?> readCharacteristic(BluetoothDevice device);
 }

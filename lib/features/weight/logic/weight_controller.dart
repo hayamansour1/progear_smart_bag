@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:logger/logger.dart';
+import 'package:progear_smart_bag/core/utils/logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:progear_smart_bag/core/services/parser/bag_parser.dart';
 import 'package:progear_smart_bag/features/activity/data/activity_seen_store.dart';
@@ -10,11 +12,10 @@ import 'package:progear_smart_bag/features/activity/data/activity_seen_store.dar
 /// Handles live weight readings from BLE, computes delta vs expected,
 /// uploads status to DB if needed, and records notifications when threshold exceeded.
 class WeightController extends ChangeNotifier {
+  final Logger _log = logger(WeightController);
   final BagParser _parser;
-  final String? _controllerID;
 
-  WeightController(this._parser, {String? controllerID})
-      : _controllerID = controllerID;
+  WeightController(this._parser);
 
   // --- State (in grams)
   double _currentG = 0;
@@ -33,30 +34,35 @@ class WeightController extends ChangeNotifier {
   StreamSubscription<String>? _sub;
 
   /// Boot: load expectedWeight once from DB so UI has baseline before BLE data starts.
-  Future<void> boot() async {
-    if (_controllerID == null) return;
+  Future<void> boot({required String controllerID}) async {
     try {
+      _log.t('Get Form DB ,controllerID : $controllerID');
       final row = await Supabase.instance.client
           .from('esp32_controller')
           .select('expectedWeight')
-          .eq('controllerID', _controllerID!)
+          .eq('controllerID', controllerID)
           .maybeSingle();
 
       final exp = (row?['expectedWeight'] as num?)?.toDouble() ?? 0.0;
       _expectedG = exp;
       _deltaG = _currentG - _expectedG;
+      _log.i('expectedWeight: $exp, currentG: $_currentG, deltaG: $_deltaG');
       notifyListeners();
     } catch (e) {
-      debugPrint('WeightController boot() failed: $e');
+      _log.e('WeightController boot() failed: $e');
     }
   }
 
   /// Bind BLE notify characteristic to BagParser
-  Future<void> bindToCharacteristic(BluetoothCharacteristic ch) async {
+  Future<void> bindToCharacteristic(BluetoothCharacteristic ch,
+      {required String controllerID}) async {
+    // read data from BLE
     await _parser.bind(ch);
     await _sub?.cancel();
-    _sub = _parser.stream.listen(_onLine, onError: (e) {
-      debugPrint('WeightController stream error: $e');
+    // listen to data
+    _sub = _parser.stream.listen(
+        (data) => _onLine(data, controllerID: controllerID), onError: (e) {
+      _log.e('WeightController stream error: $e');
     });
   }
 
@@ -76,7 +82,8 @@ class WeightController extends ChangeNotifier {
 
   // ------------------------------ PARSING ------------------------------
 
-  void _onLine(String raw) {
+  void _onLine(String raw, {required String controllerID}) {
+    _log.i('WeightController: $raw');
     final t = raw.trim();
     if (t.isEmpty) return;
 
@@ -87,6 +94,7 @@ class WeightController extends ChangeNotifier {
       try {
         final m = jsonDecode(t) as Map<String, dynamic>;
         w = _readDouble(m['w'] ?? m['weight']);
+        _log.i('read wight form JSON: $w');
       } catch (_) {}
     }
 
@@ -97,8 +105,10 @@ class WeightController extends ChangeNotifier {
           caseSensitive: false),
     );
 
+    _log.i('wight after formatting: $w');
+
     if (w != null) {
-      _applyReading(currentG: w);
+      _applyReading(currentG: w, controllerID: controllerID);
     }
   }
 
@@ -112,11 +122,15 @@ class WeightController extends ChangeNotifier {
 
   // --------------------------- APPLY & NOTIFY --------------------------
 
-  Future<void> _applyReading({required double currentG}) async {
+  Future<void> _applyReading(
+      {required double currentG, required String controllerID}) async {
     final prevDelta = _deltaG;
 
     _currentG = currentG;
     _deltaG = _currentG - _expectedG;
+
+    _log.t(
+        '(_ApplyReading) controllerID: $controllerID, currentG: $_currentG, deltaG: $_deltaG');
 
     notifyListeners(); // update UI
 
@@ -141,7 +155,7 @@ class WeightController extends ChangeNotifier {
     final sb = Supabase.instance.client;
     final uid = sb.auth.currentUser?.id;
 
-    if (uid != null && _controllerID != null) {
+    if (uid != null) {
       final severity = 'warn';
       final title = over ? 'Overweight detected' : 'Underweight detected';
       final msg = over
@@ -150,7 +164,7 @@ class WeightController extends ChangeNotifier {
 
       try {
         await sb.rpc('insert_notification', params: {
-          'p_controller': _controllerID!,
+          'p_controller': controllerID,
           'p_user': uid,
           'p_kind': 'weight_delta',
           'p_title': title,
@@ -165,11 +179,11 @@ class WeightController extends ChangeNotifier {
         });
 
         // ✅ Mark unread so the blue dot shows up immediately
-        await ActivitySeenStore.instance.bumpUnread(_controllerID!);
+        await ActivitySeenStore.instance.bumpUnread(controllerID);
 
         // TODO (Phase 3): push via Edge Function (FCM)
       } catch (e) {
-        debugPrint('insert_notification(weight_delta) failed: $e');
+        _log.e('insert_notification(weight_delta) failed: $e');
       }
     }
   }

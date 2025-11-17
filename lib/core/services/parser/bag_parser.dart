@@ -8,9 +8,11 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 class BagParser {
   final StreamController<String> _linesCtrl =
       StreamController<String>.broadcast();
+  // call stream from outside to listen
   Stream<String> get stream => _linesCtrl.stream;
 
   StreamSubscription<List<int>>? _sub;
+  // Rx buffer storage data until full line
   String _rxBuffer = '';
 
   /// Bind BLE notify characteristic and convert bytes --> text lines.
