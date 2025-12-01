@@ -1,23 +1,26 @@
+// lib/features/weight/logic/weight_controller.dart
 import 'dart:async';
 import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:logger/logger.dart';
 import 'package:progear_smart_bag/core/utils/logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import 'package:progear_smart_bag/core/services/parser/bag_parser.dart';
 import 'package:progear_smart_bag/features/activity/data/activity_seen_store.dart';
+import 'package:progear_smart_bag/core/debug/debug_flags.dart';
 
 /// WeightController
-/// Handles live weight readings from BLE, computes delta vs expected,
-/// uploads status to DB if needed, and records notifications when threshold exceeded.
+/// يستقبل قراءات الوزن من BLE، يحسب الفرق عن المتوقع،
 class WeightController extends ChangeNotifier {
   final Logger _log = logger(WeightController);
   final BagParser _parser;
 
   WeightController(this._parser);
 
-  // --- State (in grams)
+  // --- State (grams) ---
   double _currentG = 0;
   double _expectedG = 0;
   double _deltaG = 0;
@@ -26,54 +29,88 @@ class WeightController extends ChangeNotifier {
   double get expectedG => _expectedG;
   double get deltaG => _deltaG;
 
-  // --- Config thresholds
-  static const double _deltaThreshold = 200.0; // ±200 g tolerance
-  static const Duration _notifyCooldown = Duration(seconds: 60); // avoid spam
+  // --- Config thresholds ---
+  static const double _deltaThreshold = 200.0;
+  static const Duration _notifyCooldown = Duration(seconds: 60);
   DateTime _lastDeltaNotifyAt = DateTime.fromMillisecondsSinceEpoch(0);
 
   StreamSubscription<String>? _sub;
 
-  /// Boot: load expectedWeight once from DB so UI has baseline before BLE data starts.
+  /// استدعاء عندما تنتقل الشنطة لمستخدم جديد (نبي نرمي كل القديم)
+  void resetForNewOwner() {
+    _currentG = 0;
+    _expectedG = 0;
+    _deltaG = 0;
+    _lastDeltaNotifyAt = DateTime.fromMillisecondsSinceEpoch(0);
+    notifyListeners();
+  }
+
+  /// boot(): تحميل snapshot من الـ DB كبداية
   Future<void> boot({required String controllerID}) async {
+    _log.t('boot(): controllerID = $controllerID');
+    await loadSnapshotFromDb(controllerID);
+  }
+
+  /// تحميل آخر Snapshot من جدول esp32_controller
+  Future<void> loadSnapshotFromDb(String controllerID) async {
     try {
-      _log.t('Get Form DB ,controllerID : $controllerID');
-      final row = await Supabase.instance.client
+      final sb = Supabase.instance.client;
+
+      final row = await sb
           .from('esp32_controller')
-          .select('expectedWeight')
+          .select('expectedWeight, currentWeight')
           .eq('controllerID', controllerID)
           .maybeSingle();
 
-      final exp = (row?['expectedWeight'] as num?)?.toDouble() ?? 0.0;
+      if (row == null) {
+        _log.w('loadSnapshotFromDb: no controller row for $controllerID');
+        _currentG = 0;
+        _expectedG = 0;
+        _deltaG = 0;
+        notifyListeners();
+        return;
+      }
+
+      final exp = (row['expectedWeight'] as num?)?.toDouble() ?? 0.0;
+      final cur = (row['currentWeight'] as num?)?.toDouble() ?? 0.0;
+
       _expectedG = exp;
+      _currentG = cur;
       _deltaG = _currentG - _expectedG;
-      _log.i('expectedWeight: $exp, currentG: $_currentG, deltaG: $_deltaG');
+
+      _log.i(
+        'loadSnapshotFromDb: expected=$exp, current=$cur, delta=$_deltaG',
+      );
       notifyListeners();
     } catch (e) {
-      _log.e('WeightController boot() failed: $e');
+      _log.e('loadSnapshotFromDb failed: $e');
     }
   }
 
-  /// Bind BLE notify characteristic to BagParser
-  Future<void> bindToCharacteristic(BluetoothCharacteristic ch,
-      {required String controllerID}) async {
-    // read data from BLE
+  /// ربط BLE بالـ BagParser
+  Future<void> bindToCharacteristic(
+    BluetoothCharacteristic ch, {
+    required String controllerID,
+  }) async {
     await _parser.bind(ch);
     await _sub?.cancel();
-    // listen to data
+
     _sub = _parser.stream.listen(
-        (data) => _onLine(data, controllerID: controllerID), onError: (e) {
-      _log.e('WeightController stream error: $e');
-    });
+      (data) => _onLine(data, controllerID: controllerID),
+      onError: (e) {
+        _log.e('WeightController stream error: $e');
+      },
+    );
   }
 
-  /// Unbind BLE stream and release resources
+  /// فك الربط
   Future<void> unbind() async {
     await _sub?.cancel();
     _sub = null;
     await _parser.unbind();
   }
 
-  /// Called from ResetWeightSheet to update expected value locally after successful reset
+  /// استدعاء بعد Reset ناجح لتحديث المتوقع محليًا (لو احتجناه)
   void applyExpectedFromReset(double expectedG) {
     _expectedG = expectedG;
     _deltaG = _currentG - _expectedG;
@@ -83,29 +120,43 @@ class WeightController extends ChangeNotifier {
   // ------------------------------ PARSING ------------------------------
 
   void _onLine(String raw, {required String controllerID}) {
-    _log.i('WeightController: $raw');
-    final t = raw.trim();
+    DebugFlags.logWeight('WeightController raw: $raw');
+
+    var t = raw.trim();
     if (t.isEmpty) return;
 
     double? w;
 
-    // JSON format: {"w": 6234} or {"weight": 6234}
+    // لو الرسالة على شكل TAG:payload نشيل TAG
+    final colonIdx = t.indexOf(':');
+    if (colonIdx != -1 && colonIdx < t.length - 1) {
+      final payload = t.substring(colonIdx + 1).trim();
+      if (payload.isNotEmpty) {
+        t = payload;
+      }
+    }
+
+    // JSON: {"g":1234} أو {"weight":1234}
     if (t.startsWith('{') && t.endsWith('}')) {
       try {
         final m = jsonDecode(t) as Map<String, dynamic>;
-        w = _readDouble(m['w'] ?? m['weight']);
-        _log.i('read wight form JSON: $w');
-      } catch (_) {}
+        w = _readDouble(m['g'] ?? m['w'] ?? m['weight']);
+        DebugFlags.logWeight('parsed JSON weight: $w');
+      } catch (e) {
+        _log.e('JSON parse error in WeightController: $e');
+      }
     }
 
-    // Text format: W:6234 or WEIGHT=6234
+    // Text fallback: W:1234 أو WEIGHT=1234
     w ??= _extractDouble(
       t,
-      RegExp(r'(?:W|WEIGHT)\s*[:=]\s*([-+]?\d+(?:\.\d+)?)',
-          caseSensitive: false),
+      RegExp(
+        r'(?:W|WEIGHT|WEIGHT_DATA)\s*[:=]\s*([-+]?\d+(?:\.\d+)?)',
+        caseSensitive: false,
+      ),
     );
 
-    _log.i('wight after formatting: $w');
+    DebugFlags.logWeight('weight after parsing: $w');
 
     if (w != null) {
       _applyReading(currentG: w, controllerID: controllerID);
@@ -122,19 +173,82 @@ class WeightController extends ChangeNotifier {
 
   // --------------------------- APPLY & NOTIFY --------------------------
 
-  Future<void> _applyReading(
-      {required double currentG, required String controllerID}) async {
-    final prevDelta = _deltaG;
+  Future<void> _applyReading({
+    required double currentG,
+    required String controllerID,
+  }) async {
+    final sb = Supabase.instance.client;
+
+    // هل عندنا baseline ولا لا؟
+    final bool noBaseline = _expectedG <= 0;
 
     _currentG = currentG;
+
+    if (noBaseline) {
+      // أول مرة نقرأ وزن لهذي الشنطة للمستخدم الحالي
+      _expectedG = _currentG;
+      _deltaG = 0;
+      _lastDeltaNotifyAt = DateTime.fromMillisecondsSinceEpoch(0);
+
+      _log.t(
+        'First baseline set for controller=$controllerID -> $_expectedG g',
+      );
+
+      notifyListeners();
+
+      try {
+        // نحدّث جدول الكنترولر بالبلاين لاين الجديد
+        await sb
+            .from('esp32_controller')
+            .upsert({
+              'controllerID': controllerID,
+              'expectedWeight': _expectedG,
+              'currentWeight': _currentG,
+            }, onConflict: 'controllerID');
+
+        // نسجّل القراءة بعد ما ضبطنا الـ expected
+        await sb.rpc('insert_weight_reading', params: {
+          'p_sensor': 'hx711',
+          'p_weight': _currentG,
+          'p_controller': controllerID,
+        });
+      } catch (e) {
+        _log.e('applyReading(first baseline) failed: $e');
+      }
+
+      // ما نرسل تنبيه Over/Under في أول قراءة
+      return;
+    }
+
+    // ---- هنا عندنا baseline جاهز ----
+    final prevDelta = _deltaG;
+
     _deltaG = _currentG - _expectedG;
 
     _log.t(
-        '(_ApplyReading) controllerID: $controllerID, currentG: $_currentG, deltaG: $_deltaG');
+      '(_applyReading) controllerID=$controllerID, '
+      'currentG=$_currentG, expected=$_expectedG, deltaG=$_deltaG',
+    );
 
-    notifyListeners(); // update UI
+    notifyListeners(); // تحديث الـ UI فوراً
 
-    // Check threshold + cooldown
+    // 1) تسجيل القراءة في الـ DB + تحديث currentWeight
+    try {
+      await sb.rpc('insert_weight_reading', params: {
+        'p_sensor': 'hx711',
+        'p_weight': _currentG,
+        'p_controller': controllerID,
+      });
+
+      await sb
+          .from('esp32_controller')
+          .update({'currentWeight': _currentG})
+          .eq('controllerID', controllerID);
+    } catch (e) {
+      _log.e('insert_weight_reading / update currentWeight failed: $e');
+    }
+
+    // 2) Notifications لو الفرق أكبر من العتبة مع cooldown
     final now = DateTime.now();
     final over = _deltaG >= _deltaThreshold;
     final under = _deltaG <= -_deltaThreshold;
@@ -143,7 +257,7 @@ class WeightController extends ChangeNotifier {
     if (!beyond) return;
     if (now.difference(_lastDeltaNotifyAt) < _notifyCooldown) return;
 
-    // Skip repeating same-direction alerts
+    // لا نكرر تنبيه في نفس الاتجاه مباشرة
     if ((prevDelta >= _deltaThreshold && over) ||
         (prevDelta <= -_deltaThreshold && under)) {
       return;
@@ -151,8 +265,6 @@ class WeightController extends ChangeNotifier {
 
     _lastDeltaNotifyAt = now;
 
-    // Record notification
-    final sb = Supabase.instance.client;
     final uid = sb.auth.currentUser?.id;
 
     if (uid != null) {
@@ -178,10 +290,7 @@ class WeightController extends ChangeNotifier {
           },
         });
 
-        // ✅ Mark unread so the blue dot shows up immediately
         await ActivitySeenStore.instance.bumpUnread(controllerID);
-
-        // TODO (Phase 3): push via Edge Function (FCM)
       } catch (e) {
         _log.e('insert_notification(weight_delta) failed: $e');
       }
@@ -189,9 +298,9 @@ class WeightController extends ChangeNotifier {
   }
 
   @override
-  Future<void> dispose() async {
-    await _sub?.cancel();
-    await _parser.dispose();
+  void dispose() {
+    _sub?.cancel();
+    _parser.dispose();
     super.dispose();
   }
 }

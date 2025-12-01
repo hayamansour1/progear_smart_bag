@@ -27,10 +27,20 @@ class AuthService {
     }
   }
 
+  /// ✅ Sign up + save user name in metadata as `name`
   Future<AuthResponse> signUpWithEmailPassword(
-      String email, String password) async {
+    String email,
+    String password,
+    String name,
+  ) async {
     try {
-      return await _supabase.auth.signUp(email: email, password: password);
+      return await _supabase.auth.signUp(
+        email: email,
+        password: password,
+        data: {
+          'name': name, // نخزن الاسم هنا
+        },
+      );
     } on AuthException catch (e) {
       _debugLog(e);
       throw AuthFailure(_mapAuthError(e), code: e.code);
@@ -143,7 +153,7 @@ class AuthService {
       status = int.tryParse(e.statusCode ?? '');
     }
 
-    // OTP 
+    // OTP
     if (code == 'otp_expired' || (msg.contains('otp') && msg.contains('expired'))) {
       return 'The code has expired. Please request a new one.';
     }

@@ -1,6 +1,6 @@
+// lib/features/home/presentation/widgets/home_header.dart
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:progear_smart_bag/features/bag/controllers/bluetooth_controller.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -8,10 +8,13 @@ import 'package:progear_smart_bag/core/constants/app_sizes.dart';
 import 'package:progear_smart_bag/core/constants/app_text_styles.dart';
 import 'package:progear_smart_bag/core/constants/app_colors.dart';
 
-// When BLE is ready, read controllerID from BluetoothController.
-// For now, we keep a TEMP fallback id.
-// We also read/write a local unread flag via ActivitySeenStore.
+import 'package:progear_smart_bag/features/bag/controllers/bluetooth_controller.dart';
 import 'package:progear_smart_bag/features/activity/data/activity_seen_store.dart';
+import 'package:progear_smart_bag/features/activity/data/last_controller_store.dart';
+import 'package:progear_smart_bag/features/weight/logic/weight_bridge.dart';
+import 'package:progear_smart_bag/features/home/logic/battery_bridge.dart';
+import 'package:progear_smart_bag/features/weight/logic/weight_controller.dart';
+import 'package:progear_smart_bag/features/home/logic/battery_controller.dart';
 
 class HomeHeader extends StatefulWidget {
   const HomeHeader({super.key});
@@ -21,93 +24,176 @@ class HomeHeader extends StatefulWidget {
 }
 
 class _HomeHeaderState extends State<HomeHeader> {
-  // FIX: initialize with empty string to avoid LateInitializationError during first build
-  String _controllerID = '';
+  String? _controllerID;
   bool _unread = false;
+
+  BluetoothController? _btCtrl;
 
   @override
   void initState() {
     super.initState();
-    _init();
-  }
-
-  Future<String> _resolveControllerID(BuildContext context) async {
-    // REAL line (when BLE is ready):
-    final id =
-        context.read<BluetoothController>().connectedDevice?.remoteId.str;
-    if (id != null && id.isNotEmpty) return id;
-
-    // TEMP fallback for testing:
-    return 'ctrl_14be0569';
-  }
-
-  Future<void> _init() async {
-    final id = await _resolveControllerID(context);
-    final unread = await ActivitySeenStore.instance.hasUnread(id);
-    if (!mounted) return;
-    setState(() {
-      _controllerID = id;
-      _unread = unread;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _btCtrl = context.read<BluetoothController>();
+      _btCtrl?.addListener(_onBluetoothChanged);
+      _loadInitialControllerID();
     });
   }
 
+  Future<void> _loadInitialControllerID() async {
+    final ctrl = _btCtrl;
+    if (ctrl == null) return;
+
+    final liveId = ctrl.connectedDevice?.remoteId.str;
+    if (liveId != null && liveId.isNotEmpty) {
+      final unread = await ActivitySeenStore.instance.hasUnread(liveId);
+      if (!mounted) return;
+      setState(() {
+        _controllerID = liveId;
+        _unread = unread;
+      });
+      return;
+    }
+
+    final lastId = await LastControllerStore.instance.getLastControllerID();
+    if (lastId != null && lastId.isNotEmpty) {
+      final unread = await ActivitySeenStore.instance.hasUnread(lastId);
+      if (!mounted) return;
+      setState(() {
+        _controllerID = lastId;
+        _unread = unread;
+      });
+    }
+  }
+
+  void _onBluetoothChanged() async {
+    final ctrl = _btCtrl;
+    if (ctrl == null) return;
+
+    final liveId = ctrl.connectedDevice?.remoteId.str;
+
+    if ((liveId == null || liveId.isEmpty) && _controllerID != null) {
+      // نخلي آخر ID كما هو (عشان Activity)
+      return;
+    }
+
+    if (liveId == null || liveId.isEmpty) {
+      if (_controllerID != null) {
+        setState(() {
+          _controllerID = null;
+          _unread = false;
+        });
+      }
+      return;
+    }
+
+    if (liveId != _controllerID) {
+      await LastControllerStore.instance.setLastControllerID(liveId);
+      final unread = await ActivitySeenStore.instance.hasUnread(liveId);
+      if (!mounted) return;
+      setState(() {
+        _controllerID = liveId;
+        _unread = unread;
+      });
+    }
+  }
+
   Future<void> _openActivity() async {
+    final cid = _controllerID;
+
     setState(() => _unread = false);
 
-    // Navigate to unified Activity (passes controller id in the query)
-    await context.push('/activity?cid=$_controllerID');
+    if (cid != null && cid.isNotEmpty) {
+      await context.push('/activity?cid=$cid');
+    } else {
+      await context.push('/activity');
+    }
 
-    // After returning, re-check unread flag (ActivityPage clears it on load)
-    final stillUnread =
-        await ActivitySeenStore.instance.hasUnread(_controllerID);
+    if (cid != null && cid.isNotEmpty) {
+      final stillUnread = await ActivitySeenStore.instance.hasUnread(cid);
+      if (!mounted) return;
+      setState(() => _unread = stillUnread);
+    }
+  }
+
+  /// 🔌 Logout نظيف
+  Future<void> _handleLogout() async {
+    try {
+      final bt = context.read<BluetoothController>();
+      final weightCtrl = context.read<WeightController>();
+      final batteryCtrl = context.read<BatteryController>();
+
+      if (bt.connectedDevice != null) {
+        await bt.disconnectDevice(bt.connectedDevice!);
+      }
+
+      await WeightBridge.unbind(weightCtrl);
+      await BatteryBridge.unbind(batteryCtrl);
+
+      weightCtrl.resetForNewOwner();
+      batteryCtrl.resetState();
+
+      await LastControllerStore.instance.clear();
+    } catch (e) {
+      debugPrint('Logout BLE cleanup error: $e');
+    }
+
     if (!mounted) return;
-    setState(() => _unread = stillUnread);
+    await Supabase.instance.client.auth.signOut();
+  }
+
+  @override
+  void dispose() {
+    _btCtrl?.removeListener(_onBluetoothChanged);
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // While initializing, render a small placeholder to keep layout stable
-    if (_controllerID.isEmpty) {
-      return const SizedBox(height: 56);
-    }
+    // rebuild احتياط لو البلوتوث تغيّر
+    context.watch<BluetoothController>();
+
+    final user = Supabase.instance.client.auth.currentUser;
+    final storedName = (user?.userMetadata?['name'] as String?)?.trim();
+
+    final displayName = (storedName == null || storedName.isEmpty)
+        ? 'ProGear user'
+        : storedName;
+
+    final avatarLetter =
+        displayName.isNotEmpty ? displayName[0].toUpperCase() : '?';
 
     return Row(
       children: [
         CircleAvatar(
           radius: 24,
           backgroundColor: Colors.white10,
-          child: Text('H', style: AppTextStyles.heading2),
+          child: Text(avatarLetter, style: AppTextStyles.heading2),
         ),
         const SizedBox(width: AppSizes.md),
-
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Hey, Haya', style: AppTextStyles.heading2),
+              Text('Hey, $displayName', style: AppTextStyles.heading2),
               const SizedBox(height: 2),
-              Text('Ready to go?', style: AppTextStyles.secondary),
+              const Text('Ready to go?', style: AppTextStyles.secondary),
             ],
           ),
         ),
-
-        // Notifications --> Unified Activity Page
         _HeaderIcon(
           icon: Icons.notifications_outlined,
           showDot: _unread,
           onTap: _openActivity,
         ),
         const SizedBox(width: 8),
-
-        // TODO: Settings (stub)
-        const _HeaderIcon(icon: Icons.settings_outlined),
-
+        _HeaderIcon(
+          icon: Icons.settings_outlined,
+          onTap: () => context.push('/settings'),
+        ),
         const SizedBox(width: 8),
-
-        // Sign out
         _HeaderIcon(
           icon: Icons.logout,
-          onTap: () async => Supabase.instance.client.auth.signOut(),
+          onTap: _handleLogout,
         ),
       ],
     );
@@ -153,6 +239,10 @@ class _HeaderIcon extends StatelessWidget {
         ],
       ),
     );
-    return GestureDetector(onTap: onTap, child: child);
+
+    return GestureDetector(
+      onTap: onTap,
+      child: child,
+    );
   }
 }

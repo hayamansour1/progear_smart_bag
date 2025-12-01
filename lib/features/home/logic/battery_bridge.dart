@@ -1,21 +1,29 @@
 // lib/features/home/logic/battery_bridge.dart
-import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-import 'package:provider/provider.dart';
-import 'package:progear_smart_bag/features/home/logic/battery_controller.dart';
 
-/// BatteryBridge: simple static hook so BLE layer can bind/unbind easily.
+import 'battery_controller.dart';
+
+/// BatteryBridge: جسر بسيط بين BLE و BatteryController بدون BuildContext.
 class BatteryBridge {
-  /// Called by Bluetooth side when the correct characteristic is found.
+  /// يربط الكنترولر مع الـ BLE + يحدد controllerID + يحمل من الـ DB
   static Future<void> bind(
-      BuildContext context, BluetoothCharacteristic ch) async {
-    final ctrl = context.read<BatteryController>();
+    BatteryController ctrl,
+    BluetoothCharacteristic ch, {
+    required String controllerID,
+  }) async {
+    // نخزن الـ controllerID داخل الكنترولر
+    ctrl.setControllerID(controllerID);
+
+    // نجيب آخر حالة من الـ DB (لو فيه repo)
+    await ctrl.boot();
+
+    // نربط الـ BLE stream
     await ctrl.bindToCharacteristic(ch);
   }
 
-  /// Called by Bluetooth side on disconnect.
-  static Future<void> unbind(BuildContext context) async {
-    final ctrl = context.read<BatteryController>();
+  /// فك الربط عن الـ BLE + تصفير الحالة عشان ما تنتقل ليوزر جديد
+  static Future<void> unbind(BatteryController ctrl) async {
     await ctrl.unbind();
+    ctrl.resetState(); // ⬅️ هذي الإضافة الوحيدة
   }
 }

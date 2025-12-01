@@ -19,6 +19,7 @@ import 'package:progear_smart_bag/features/home/logic/battery_controller.dart';
 // Weight
 import 'package:progear_smart_bag/features/weight/logic/weight_controller.dart';
 
+// Activity unread store
 import 'package:progear_smart_bag/features/activity/data/activity_seen_store.dart';
 
 Future<void> main() async {
@@ -30,34 +31,29 @@ Future<void> main() async {
     anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
   );
 
-  //  Init local store used for unread badges/dots
+  // Init local store used for unread badges/dots
   await ActivitySeenStore.instance.init();
 
   runApp(
     MultiProvider(
       providers: [
-        // --- Bluetooth controller (REAL) ---
+        // --- Bluetooth controller ---
         ChangeNotifierProvider(
           create: (_) => BluetoothController(BlueServiceImpl()),
         ),
 
         // --- Battery controller ---
-        // new design need when call supabase is bad
         ChangeNotifierProvider(
           create: (ctx) {
             final repo = BatteryRepository(Supabase.instance.client);
             final ctrl = BatteryController(
               BagParser(),
               repository: repo,
-              // REAL line (when Bluetooth is ready):
-              controllerID:
-                  ctx.read<BluetoothController>().connectedDevice?.remoteId.str,
-
-              // TEMP fallback for testing (mock controllerID):
-              // controllerID: 'ctrl_14be0569',
+              // REAL controllerID will be set internally via boot()
+              // أو تقدرين تمررين id ثابت لو حابة تختبرين.
             );
 
-            // Hydrate last known battery status from DB before BLE is active.
+            // نحاول نجيب آخر حالة بطارية من الـ DB (لو فيه controllerID)
             ctrl.boot();
             return ctrl;
           },
@@ -65,7 +61,6 @@ Future<void> main() async {
 
         // --- Weight controller (live grams via BLE) ---
         ChangeNotifierProvider(
-          // bag parser is a singleton for now
           create: (_) => WeightController(BagParser()),
         ),
       ],
@@ -82,16 +77,6 @@ class ProGearApp extends StatefulWidget {
 }
 
 class _ProGearAppState extends State<ProGearApp> {
-  @override
-  void initState() {
-    super.initState();
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(

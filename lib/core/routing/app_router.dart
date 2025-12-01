@@ -9,6 +9,9 @@ import 'package:progear_smart_bag/features/home/presentation/pages/home_dashboar
 import 'package:progear_smart_bag/features/auth/presentation/pages/auth_gate.dart';
 import 'package:progear_smart_bag/features/activity/presentation/pages/activity_page.dart';
 
+// ✅ جديد: صفحة السيتنق
+import 'package:progear_smart_bag/features/home/presentation/pages/settings_page.dart';
+
 final appRouter = GoRouter(
   debugLogDiagnostics: true,
   initialLocation: '/auth-gate',
@@ -24,6 +27,11 @@ final appRouter = GoRouter(
       ),
     ),
     GoRoute(path: '/home', builder: (c, s) => const HomeDashboardPage()),
+
+    GoRoute(
+      path: '/settings',
+      builder: (c, s) => const SettingsPage(),
+    ),
 
     // Activity
     GoRoute(

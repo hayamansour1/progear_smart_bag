@@ -54,8 +54,8 @@ class AlertBagConnection extends StatelessWidget {
           ),
         ],
       ),
-      actionsAlignment: MainAxisAlignment.center,
-      actions: [ButtonScanSearch()],
+      // actionsAlignment: MainAxisAlignment.center,
+      // actions: [ButtonScanSearch()],
     );
   }
 }

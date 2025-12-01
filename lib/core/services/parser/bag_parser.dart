@@ -1,53 +1,70 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/material.dart';
+
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:progear_smart_bag/core/debug/debug_flags.dart';
 
 /// BagParser
-/// Handles plain-text BLE data and emits clean text lines.
+/// يحوّل إشعارات الـ BLE (chunks) إلى سطور كاملة مبنية على '\n'
 class BagParser {
   final StreamController<String> _linesCtrl =
       StreamController<String>.broadcast();
-  // call stream from outside to listen
+
   Stream<String> get stream => _linesCtrl.stream;
 
   StreamSubscription<List<int>>? _sub;
-  // Rx buffer storage data until full line
-  String _rxBuffer = '';
 
-  /// Bind BLE notify characteristic and convert bytes --> text lines.
+  // بوفر داخلي لتجميع القطع قبل ما نطلع سطر كامل
+  String _buffer = '';
+
   Future<void> bind(BluetoothCharacteristic characteristic) async {
+    // نلغي أي اشتراك قديم
     await _sub?.cancel();
-    _rxBuffer = '';
 
+    DebugFlags.logParser(
+        '🧩 BagParser.bind: enabling notify on ${characteristic.uuid}');
     await characteristic.setNotifyValue(true);
 
-    _sub = characteristic.lastValueStream.listen((bytes) {
-      if (bytes.isEmpty) return;
+    _sub = characteristic.onValueReceived.listen(
+      (bytes) {
+        DebugFlags.logParser('🧩 RAW BLE BYTES: $bytes');
+        if (bytes.isEmpty) return;
 
-      final chunk = utf8.decode(bytes, allowMalformed: true);
-      _rxBuffer += chunk;
+        // نحول البايتات إلى نص (ممكن تجي نص الرسالة فقط)
+        final chunk = utf8.decode(bytes, allowMalformed: true);
+        DebugFlags.logParser('🧩 RAW BLE TEXT CHUNK: $chunk');
 
-      final parts = _rxBuffer.split(RegExp(r'[\r\n]+'));
-      _rxBuffer = parts.isNotEmpty ? parts.removeLast() : '';
+        // نضيف التشنك للبفر
+        _buffer += chunk;
 
-      for (final raw in parts) {
-        final line = raw.trim();
-        if (line.isNotEmpty) _linesCtrl.add(line);
-      }
-    }, onError: (e) {
-      debugPrint('BagParser error: $e');
-    }, cancelOnError: false);
+        // نطلع كل سطر كامل ينتهي بـ \n
+        int newlineIndex;
+        while ((newlineIndex = _buffer.indexOf('\n')) != -1) {
+          final line = _buffer.substring(0, newlineIndex).trim();
+          _buffer = _buffer.substring(newlineIndex + 1);
+
+          if (line.isNotEmpty) {
+            DebugFlags.logParser('🧩 PARSED BLE LINE: $line');
+            _linesCtrl.add(line);
+          }
+        }
+      },
+      onError: (e) {
+        DebugFlags.logParser('BagParser error: $e');
+      },
+      cancelOnError: false,
+    );
   }
 
   Future<void> unbind() async {
     await _sub?.cancel();
     _sub = null;
-    _rxBuffer = '';
+    _buffer = '';
   }
 
   Future<void> dispose() async {
     await _sub?.cancel();
     await _linesCtrl.close();
+    _buffer = '';
   }
 }

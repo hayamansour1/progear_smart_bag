@@ -1,3 +1,4 @@
+// lib/features/home/presentation/widgets/set_expected_weight_sheet.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -6,138 +7,95 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:progear_smart_bag/core/constants/app_sizes.dart';
 import 'package:progear_smart_bag/core/constants/app_text_styles.dart';
 import 'package:progear_smart_bag/core/constants/app_colors.dart';
-import 'package:progear_smart_bag/shared/widgets/progear_button.dart';
 import 'package:progear_smart_bag/core/constants/app_images.dart';
+import 'package:progear_smart_bag/shared/widgets/progear_button.dart';
 
 // Local unread store (header dot / badges)
 import 'package:progear_smart_bag/features/activity/data/activity_seen_store.dart';
 
-// Update WeightController locally after reset
+// WeightController: نقرأ منه الوزن الحالي + نحدّث expected محلياً
 import 'package:progear_smart_bag/features/weight/logic/weight_controller.dart';
 
 // Floating toast (uses rootMessengerKey)
 import 'package:progear_smart_bag/shared/widgets/progear_toast.dart';
 
-class ResetWeightSheet extends StatefulWidget {
-  /// NOTE: when BLE is ready, pass the real connected controller id from Bluetooth layer:
-  /// final controllerID = context.read<BluetoothController>().connectedDevice?.remoteId.str;
+/// SetExpectedWeightSheet:
+/// أول مرة يضبط فيها اليوزر الوزن المتوقع للحقيبة.
+/// الفكرة: اليوزر يحط كل أغراضه المعتادة → يثبت الشنطة → يضغط Done.
+/// حنا ناخذ currentG من WeightController ونحفظه كـ expectedWeight في DB.
+class SetExpectedWeightSheet extends StatefulWidget {
   final String controllerID;
 
-  const ResetWeightSheet({super.key, required this.controllerID});
+  const SetExpectedWeightSheet({
+    super.key,
+    required this.controllerID,
+  });
 
   @override
-  State<ResetWeightSheet> createState() => _ResetWeightSheetState();
+  State<SetExpectedWeightSheet> createState() => _SetExpectedWeightSheetState();
 }
 
-class _ResetWeightSheetState extends State<ResetWeightSheet> {
+class _SetExpectedWeightSheetState extends State<SetExpectedWeightSheet> {
   final _sb = Supabase.instance.client;
-
   bool _loading = false;
 
-  // Snapshot من الـ DB فقط للـ hint "Current • ..."
-  double? _currentG;
-  DateTime? _updatedAt;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadSnapshot();
-  }
-
-  /// Lightweight snapshot for the tiny "Current • ..." hint.
-  Future<void> _loadSnapshot() async {
-    try {
-      final row = await _sb
-          .from('esp32_controller')
-          .select('currentWeight, inserted_at')
-          .eq('controllerID', widget.controllerID)
-          .maybeSingle();
-
-      if (!mounted) return;
-      setState(() {
-        _currentG = (row?['currentWeight'] as num?)?.toDouble();
-        final ts = row?['inserted_at'] as String?;
-        _updatedAt = ts != null ? DateTime.tryParse(ts) : null;
-      });
-    } catch (_) {
-      // snapshot فشل بسيط، ما نوقف الشيت عشانه
-    }
-  }
-
-  /// Use live weight from WeightController, update expectedWeight in DB,
-  /// log a notification, update local controller + unread activity.
-  Future<void> _confirmReset() async {
+  Future<void> _confirmSet() async {
     setState(() => _loading = true);
     try {
-      // 1) نجيب الوزن الحالي من الكنترولر (live BLE)
+      // 1) نجيب الوزن الحالي من WeightController (live من BLE)
       final weightCtrl = context.read<WeightController>();
       final currentG = weightCtrl.currentG;
 
-      // 2) نحدّث expectedWeight = currentG في الداتابيس
+      // 2) نحدّث expectedWeight = currentG في الـ DB
       await _sb.rpc('set_expected_weight', params: {
         'p_controller': widget.controllerID,
         'p_value': currentG,
       });
 
-      // 3) نسجّل Notification للـ Activity
+      // 3) نسجّل Notification كبداية لاستخدام الشنطة
       final uid = _sb.auth.currentUser?.id;
       if (uid != null) {
         await _sb.rpc('insert_notification', params: {
           'p_controller': widget.controllerID,
           'p_user': uid,
-          'p_kind': 'weight_reset',
-          'p_title': 'Expected updated',
+          'p_kind': 'expected_init',
+          'p_title': 'Baseline weight set',
           'p_message':
-              'Expected weight set to ${currentG.toStringAsFixed(1)} g.',
+              'We saved your usual bag weight as ${currentG.toStringAsFixed(1)} g.',
           'p_severity': 'success',
           'p_meta': {
             'current_g': currentG,
           },
         });
+
+        // نعلّم ActivitySeenStore إن فيه حدث جديد
+        await ActivitySeenStore.instance.bumpUnread(widget.controllerID);
       }
 
-      // 4) نحدّث الـ WeightController محليًا عشان UI يتحدث فورًا
+      // 4) نحدّث الكنترولر محلياً عشان الـ UI يتحدّث مباشرة
       weightCtrl.applyExpectedFromReset(currentG);
 
-      // 5) نعلّم الـ ActivitySeenStore إن فيه حدث جديد
-      try {
-        await ActivitySeenStore.instance.bumpUnread(widget.controllerID);
-      } catch (_) {
-        // مو ضروري لو فشل، بس للبادجات
-      }
-
-      // 6) نحدّث الـ snapshot اللي يظهر تحت العنوان
-      await _loadSnapshot();
-
-      // 7) Haptics + toast feedback, ثم نقفل الشيت
+      // 5) Haptics + Toast + إغلاق
       await HapticFeedback.lightImpact();
       ProGearToast.show(
-        'Expected weight updated to ${currentG.toStringAsFixed(1)} g.',
+        'Baseline saved: ${currentG.toStringAsFixed(1)} g.',
       );
 
       if (!mounted) return;
-      Navigator.pop(context, true); // close with success
+      Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
-      ProGearToast.show('Reset failed: $e', style: ToastStyle.error);
+      ProGearToast.show(
+        'Could not set weight: $e',
+        style: ToastStyle.error,
+      );
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
-  String _fmtTime(DateTime t) {
-    final l = t.toLocal();
-    return '${l.year}-${l.month.toString().padLeft(2, '0')}-${l.day.toString().padLeft(2, '0')} '
-        '${l.hour.toString().padLeft(2, '0')}:${l.minute.toString().padLeft(2, '0')}';
-  }
-
   @override
   Widget build(BuildContext context) {
-    final currentHint = _currentG == null
-        ? null
-        : '${_currentG!.toStringAsFixed(1)} g'
-            '${_updatedAt == null ? '' : ' • ${_fmtTime(_updatedAt!)}'}';
-
     final isPortrait =
         MediaQuery.of(context).orientation == Orientation.portrait;
 
@@ -145,7 +103,6 @@ class _ResetWeightSheetState extends State<ResetWeightSheet> {
       builder: (context, constraints) {
         final maxH = constraints.maxHeight;
 
-        // Responsive illustration sizing (safe for short heights)
         final illusSize = (maxH * 0.28).clamp(140.0, 200.0).toDouble();
         final illusImg = (illusSize * 0.88).toDouble();
 
@@ -170,7 +127,7 @@ class _ResetWeightSheetState extends State<ResetWeightSheet> {
               ),
             ),
 
-            // ─ Illustration (PNG inside a soft glowing circle)
+            // ─ Illustration (بانر الوزن)
             Container(
               height: illusSize,
               width: illusSize,
@@ -198,7 +155,7 @@ class _ResetWeightSheetState extends State<ResetWeightSheet> {
 
             // ─ Title
             const Text(
-              "We’ll update your bag’s weight",
+              "Let’s set your bag’s weight",
               textAlign: TextAlign.center,
               style: AppTextStyles.heading1,
             ),
@@ -206,26 +163,13 @@ class _ResetWeightSheetState extends State<ResetWeightSheet> {
 
             // ─ Description
             Text(
-              "Just pack your stuff as usual and place the bag on a stable surface. "
-              "Avoid moving it for best accuracy.",
+              "Pack everything you usually carry in your bag, then place it on a stable surface. "
+              "We’ll save this as your baseline weight so we can alert you when something changes.",
               textAlign: TextAlign.center,
               style: AppTextStyles.secondary.copyWith(
                 fontSize: AppSizes.fontMd,
               ),
             ),
-
-            // ─ Small hint with current snapshot
-            if (currentHint != null) ...[
-              SizedBox(height: blockGap),
-              Text(
-                'Current • $currentHint',
-                textAlign: TextAlign.center,
-                style: AppTextStyles.secondary.copyWith(
-                  color: Colors.white70,
-                  fontSize: AppSizes.fontSm,
-                ),
-              ),
-            ],
 
             SizedBox(height: blockGap),
 
@@ -243,12 +187,12 @@ class _ResetWeightSheetState extends State<ResetWeightSheet> {
                 const SizedBox(width: AppSizes.md),
                 Expanded(
                   child: ProGearButton.primary(
-                    label: _loading ? 'Working…' : 'Done',
+                    label: _loading ? 'Saving…' : 'Done',
                     onPressed: _loading
                         ? null
                         : () async {
                             await HapticFeedback.selectionClick();
-                            await _confirmReset();
+                            await _confirmSet();
                           },
                     size: ProGearButtonSize.lg,
                   ),
@@ -256,7 +200,6 @@ class _ResetWeightSheetState extends State<ResetWeightSheet> {
               ],
             ),
 
-            // Extra bottom gap so buttons don't stick to the edge
             SizedBox(height: bottomSafeGap),
           ],
         );
@@ -274,7 +217,6 @@ class _ResetWeightSheetState extends State<ResetWeightSheet> {
             top: false,
             child: ConstrainedBox(
               constraints: BoxConstraints(
-                // keep a little headroom so content never overflows
                 maxHeight: maxH * 0.92,
               ),
               child: needsScroll

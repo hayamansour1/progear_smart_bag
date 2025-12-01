@@ -20,9 +20,8 @@ class WeightRepository {
 
     if (res is! List) return const [];
 
-    return res
-        .whereType<Map<String, dynamic>>()
-        .map(WeightEntry.fromMap)
-        .toList();
+    final rows = res.cast<Map<String, dynamic>>();
+
+    return rows.map(WeightEntry.fromMap).toList();
   }
 }

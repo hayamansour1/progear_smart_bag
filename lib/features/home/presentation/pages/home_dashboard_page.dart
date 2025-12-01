@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 import 'package:progear_smart_bag/core/constants/app_sizes.dart';
 import 'package:progear_smart_bag/core/theme/progear_background.dart';
+
+// import 'package:progear_smart_bag/core/constants/app_colors.dart';
+
 import 'package:progear_smart_bag/features/bag/controllers/bluetooth_controller.dart';
 import 'package:progear_smart_bag/features/bag/presentation/widgets/alert_bag_connection.dart';
+import 'package:progear_smart_bag/features/bag/presentation/widgets/connect_bag_sheet.dart';
+
 import 'package:progear_smart_bag/features/weight/logic/weight_controller.dart';
 import 'package:progear_smart_bag/shared/widgets/progear_button.dart';
-import 'package:provider/provider.dart';
 
 // widgets
 import '../widgets/home_header.dart';
@@ -22,33 +29,118 @@ class HomeDashboardPage extends StatefulWidget {
 }
 
 class _HomeDashboardPageState extends State<HomeDashboardPage> {
-  // When BLE is ready, ask BluetoothController for the real id:
-  late String _controllerID;
-  // TEMP for testing without BLE:
-  // static const _controllerID = 'ctrl_14be0569';
+  bool _snapshotLoaded = false;
 
   @override
   void initState() {
-    // TODO: check is BLE ready and update controllerID
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _controllerID =
-          context.read<BluetoothController>().connectedDevice?.remoteId.str ??
-              'ctrl_14be0569';
-      if (_controllerID.isEmpty || _controllerID == 'ctrl_14be0569') {
-        showDialog(
-            context: context,
-            builder: (context) {
-              return AlertBagConnection();
-            });
+
+    // بعد ما تبني الصفحة:
+    // 1) نشيك إذا اليوزر عنده controller مسجل في DB أو لا
+    // 2) لو ماعنده → نطلع ConnectBagSheet (مع الـ instructions)
+    // 3) لو عنده → نستخدم منطقك القديم (تنبيه الاتصال + load snapshot)
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final sb = Supabase.instance.client;
+      final uid = sb.auth.currentUser?.id;
+
+      // حالة نادرة: ما فيه يوزر
+      if (uid == null) {
+        if (!mounted) return;
+        _showAlertIfNoBluetoothConnected();
+        await _loadLastSnapshotIfNeeded();
+        return;
+      }
+
+      // هل عنده شنطة مسبقًا في esp32_controller؟
+      final row = await sb
+          .from('esp32_controller')
+          .select('controllerID')
+          .eq('userID', uid)
+          .maybeSingle();
+
+      if (!mounted) return;
+
+      final String? cid = row?['controllerID'] as String?;
+      final hasController = cid != null;
+
+      if (!hasController) {
+        // 🔹 New user → نطلع شيت "Let’s get your bag connected"
+        await showModalBottomSheet(
+          context: context,
+          useSafeArea: true,
+          backgroundColor: Colors.transparent,
+          isScrollControlled: true,
+          builder: (_) => const ConnectBagSheet(),
+        );
+
+        // بعد ما يقفل الشيت، نحاول نحمّل snapshot (لو صار فيه controller)
+        await _loadLastSnapshotIfNeeded();
+      } else {
+        // 🔹 Existing user → منطق التنبيه القديم
+        _showAlertIfNoBluetoothConnected();
+        await _loadLastSnapshotIfNeeded();
       }
     });
+  }
 
-    // TEMP for testing without BLE:
-    // _controllerID = 'ctrl_14be0569';
+  /// منطق التنبيه اللي كان عندك سابقًا:
+  /// إذا مافي شنطة متصلة نطلع AlertBagConnection
+  void _showAlertIfNoBluetoothConnected() {
+    final bt = context.read<BluetoothController>();
+
+    if (bt.connectedDevice == null) {
+      showDialog(
+        context: context,
+        builder: (_) => const AlertBagConnection(),
+      );
+    }
+  }
+
+  /// تحميل آخر Snapshot (expected + current weight) من الـ DB
+  /// عشان:
+  /// - لو ما فيه بلوتوث: نعرض آخر وزن محفوظ
+  /// - لو فيه بلوتوث: برضو نبدأ من قيمة منطقية
+  Future<void> _loadLastSnapshotIfNeeded() async {
+    if (_snapshotLoaded) return;
+
+    try {
+      final sb = Supabase.instance.client;
+      final uid = sb.auth.currentUser?.id;
+      if (uid == null) return;
+
+      // حالياً نفترض لكل يوزر شنطة واحدة
+      final row = await sb
+          .from('esp32_controller')
+          .select('controllerID')
+          .eq('userID', uid)
+          .limit(1)
+          .maybeSingle();
+
+      final cid = row?['controllerID'] as String?;
+      if (cid == null) return;
+
+      if (!mounted) return;
+      final weightCtrl = context.read<WeightController>();
+      await weightCtrl.loadSnapshotFromDb(cid);
+      _snapshotLoaded = true;
+    } catch (_) {
+      // فشل بسيط، نخلي الـ UI يكمل عادي
+    }
   }
 
   Future<void> _openResetSheet() async {
+    final bt = context.read<BluetoothController>();
+    final cid = bt.connectedDevice?.remoteId.str;
+
+    // لو ما فيه شنطة متصلة نطلع تنبيه الاتصال بدل الشيت
+    if (cid == null) {
+      await showDialog(
+        context: context,
+        builder: (_) => const AlertBagConnection(),
+      );
+      return;
+    }
+
     final isLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
 
@@ -56,17 +148,11 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
       context: context,
       useSafeArea: true,
       backgroundColor: Colors.transparent,
-
-      // Keep native swipe-down to dismiss in portrait
       enableDrag: true,
       isDismissible: true,
-
-      // Only make it draggable/scrollable in landscape
       isScrollControlled: isLandscape,
-
       builder: (_) {
         if (isLandscape) {
-          // Landscape: DraggableScrollableSheet so all content fits on short heights
           return DraggableScrollableSheet(
             expand: false,
             initialChildSize: 0.58,
@@ -75,26 +161,21 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
             builder: (ctx, scrollController) {
               return SingleChildScrollView(
                 controller: scrollController,
-                child: ResetWeightSheet(
-                  controllerID: _controllerID,
-                ),
+                child: ResetWeightSheet(controllerID: cid),
               );
             },
           );
         } else {
-          // Portrait: normal compact sheet with swipe-down to dismiss
-          return ResetWeightSheet(
-            controllerID: _controllerID,
-          );
+          return ResetWeightSheet(controllerID: cid);
         }
       },
     );
-
-    if (!mounted) return;
   }
 
   @override
   Widget build(BuildContext context) {
+    final weightCtrl = context.watch<WeightController>();
+
     return Scaffold(
       body: ProGearBackground(
         child: SafeArea(
@@ -109,15 +190,13 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
               const BagStatusCard(),
               const SizedBox(height: AppSizes.lg),
 
-              //  REAL (when BLE + expected weight are ready)
+              // الوزن الحالي + المتوقع:
+              // - لو فيه بلوتوث: live من الـ BLE
+              // - لو مافيه بلوتوث: آخر Snapshot من الـ DB
               WeightCard(
-                currentG: context.watch<WeightController>().currentG,
-                // TODO: replace with real expected grams from DB state
-                expectedG: 8000,
+                currentG: weightCtrl.currentG,
+                expectedG: weightCtrl.expectedG,
               ),
-
-              //   TEMP fake grams for now (to keep UI running)
-              // const WeightCard(currentG: 5600, expectedG: 8000),
 
               const SizedBox(height: AppSizes.lg),
               const TwoUpCards(),

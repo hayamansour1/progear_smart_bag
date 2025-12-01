@@ -46,7 +46,7 @@ class BagStatusCard extends StatelessWidget {
         child: Column(
           children: [
             SizedBox(
-              height: 140,
+              height: 85,
               child: Stack(
                 alignment: Alignment.center,
                 children: [

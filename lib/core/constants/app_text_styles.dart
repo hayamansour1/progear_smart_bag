@@ -43,6 +43,12 @@ class AppTextStyles {
     color: Colors.white70,
   );
 
+  static const TextStyle bodySM = TextStyle(
+    fontSize: AppSizes.fontMd,
+    // fontWeight: FontWeight.w400,
+    color: Colors.white70,
+  );
+
   // AppTextStyles
   static const TextStyle button = TextStyle(
     fontSize: AppSizes.fontMd,

@@ -42,6 +42,7 @@ class _RegisterPageState extends State<RegisterPage> {
       await _auth.signUpWithEmailPassword(
         _email.text.trim(),
         _password.text,
+        _name.text.trim(), // ✅ نمرر الاسم هنا
       );
 
       if (!mounted) return;
@@ -136,8 +137,7 @@ class _RegisterPageState extends State<RegisterPage> {
                             controller: _password,
                             label: 'Password',
                             hintText: 'your password',
-                            showStrength:
-                                false, //===================================showSnackBar==============>>>>>
+                            showStrength: false,
                             validator: (v) =>
                                 AppValidators.password(v, minLen: 6),
                           ),

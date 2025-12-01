@@ -2,13 +2,21 @@ import 'dart:async';
 
 import 'package:app_settings/app_settings.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-import 'package:logger/web.dart';
+import 'package:logger/logger.dart';
 import 'package:permission_handler/permission_handler.dart';
+
 import 'package:progear_smart_bag/core/services/bluetooth/blue_service.dart';
 import 'package:progear_smart_bag/core/utils/logger.dart';
+import 'package:progear_smart_bag/core/debug/debug_flags.dart';
 
 class BlueServiceImpl implements BlueService {
   final Logger _log = logger(BlueServiceImpl);
+
+  // ✅ UUIDs حق خدمة الـ UART في الهاردوير
+  static final Guid _svcUart =
+      Guid('6E400001-B5A3-F393-E0A9-E50E24DCCA9E'); // SERVICE
+  static final Guid _txUart =
+      Guid('6E400003-B5A3-F393-E0A9-E50E24DCCA9E'); // TX (notify)
 
   /// Request bluetooth permission
   Future<void> _checkPermissions() async {
@@ -20,25 +28,26 @@ class BlueServiceImpl implements BlueService {
   /// Ensure bluetooth on
   Future<void> _ensureBluetoothOn() async {
     final state = await FlutterBluePlus.adapterState.first;
-    // bluetooth off
     if (state != BluetoothAdapterState.on) {
-      // handle this open app settings dialog here bluetooth
+      DebugFlags.logBle('Bluetooth is OFF → opening settings');
       await AppSettings.openAppSettings(type: AppSettingsType.bluetooth);
     }
   }
 
   @override
   Future<void> startScan() async {
-    // step one check permission
+    DebugFlags.logBle('startScan() called');
     await _checkPermissions();
-    // step two ensure bluetooth on
     await _ensureBluetoothOn();
-    // step three start scan
+    DebugFlags.logBle('FlutterBluePlus.startScan()');
     await FlutterBluePlus.startScan();
   }
 
   @override
-  Future<void> stopScan() async => await FlutterBluePlus.stopScan();
+  Future<void> stopScan() async {
+    DebugFlags.logBle('stopScan() called');
+    await FlutterBluePlus.stopScan();
+  }
 
   @override
   Stream<List<ScanResult>> get scanResults => FlutterBluePlus.scanResults;
@@ -46,24 +55,44 @@ class BlueServiceImpl implements BlueService {
   @override
   Future<void> connect(BluetoothDevice device) async {
     try {
+      DebugFlags.logBle('connect -> ${device.remoteId}');
+
       await device
-          .connect(autoConnect: true, license: License.free, mtu: null)
-          .timeout(Duration(seconds: 30), onTimeout: () {
-        throw TimeoutException("Connection timeout");
-      });
+          .connect(
+            autoConnect: true,
+            license: License.free,
+            mtu: null,
+          )
+          .timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw TimeoutException("Connection timeout");
+        },
+      );
+
+      // نتأكد إنه فعلاً صار متصل
+      await device.connectionState
+          .firstWhere((s) => s == BluetoothConnectionState.connected);
+
+      // نطلب MTU أكبر عشان الرسالة ما تنقص
+      try {
+        final mtu = await device.requestMtu(185);
+        DebugFlags.logBle('MTU negotiated: $mtu');
+      } catch (e) {
+        DebugFlags.logBle('requestMtu failed: $e');
+      }
     } catch (error) {
       if (error.toString().contains('already connected')) {
-        // await device.disconnect();
-        // await device.connect(autoConnect: true, license: License.free);
-        _log.i('${device.platformName} is already connected');
+        DebugFlags.logBle('${device.platformName} is already connected');
       } else {
-        _log.i("Connection error: $error");
+        _log.e("Connection error: $error");
       }
     }
   }
 
   @override
   Future<void> disconnect(BluetoothDevice device) async {
+    DebugFlags.logBle('disconnect -> ${device.remoteId}');
     await device.disconnect();
   }
 
@@ -73,42 +102,63 @@ class BlueServiceImpl implements BlueService {
   }
 
   @override
-  Future<List<BluetoothService>> discoverServices(BluetoothDevice device) {
+  Future<List<BluetoothService>> discoverServices(
+      BluetoothDevice device) async {
+    DebugFlags.logBle('discoverServices -> ${device.remoteId}');
     return device.discoverServices();
   }
 
   @override
   Future<BluetoothCharacteristic?> readCharacteristic(
-      BluetoothDevice device) async {
-    // get services
-    List<BluetoothService> services = await discoverServices(device);
-    BluetoothCharacteristic? targetChar;
-    // UUIDs الخاصة بالجهاز (غيرها حسب جهازك)
-    const String myServiceUUID = "0000180f-0000-1000-8000-00805f9b34fb";
-    const String myCharUUID = "00002a19-0000-1000-8000-00805f9b34fb";
+    BluetoothDevice device,
+  ) async {
+    DebugFlags.logBle('readCharacteristic: start for ${device.remoteId.str}');
 
-    for (var s in services) {
-      _log.w("SERVICE: ${s.uuid}");
+    final services = await discoverServices(device);
 
-      for (var c in s.characteristics) {
-        _log.w("   CHAR: ${c.uuid} | props: ${c.properties}");
+    DebugFlags.logBle('--- GATT table for ${device.remoteId.str} ---');
+    for (final s in services) {
+      DebugFlags.logBle('SERVICE: ${s.uuid}');
+      for (final c in s.characteristics) {
+        DebugFlags.logBle(
+          '  CHAR: ${c.uuid} '
+          'notify=${c.properties.notify} '
+          'indicate=${c.properties.indicate} '
+          'read=${c.properties.read} '
+          'write=${c.properties.write} '
+          'writeWithoutResp=${c.properties.writeWithoutResponse}',
+        );
       }
     }
-    // ابحث عن الـ characteristic الصحيحة
-    for (var service in services) {
-      if (service.uuid.toString() == myServiceUUID) {
-        for (var c in service.characteristics) {
-          if (c.uuid.toString() == myCharUUID) {
-            targetChar = c;
-            break;
-          }
-        }
+
+    BluetoothService? uartService;
+    for (final s in services) {
+      if (s.uuid == _svcUart) {
+        uartService = s;
+        break;
       }
     }
-    if (targetChar == null) {
-      _log.e("Characteristic not found");
+
+    if (uartService == null) {
+      DebugFlags.logBle('❌ UART service not found ($_svcUart)');
       return null;
     }
-    return targetChar;
+
+    BluetoothCharacteristic? txChar;
+    for (final c in uartService.characteristics) {
+      if (c.uuid == _txUart) {
+        txChar = c;
+        break;
+      }
+    }
+
+    if (txChar == null) {
+      DebugFlags.logBle('❌ UART TX characteristic not found ($_txUart)');
+      return null;
+    }
+
+    DebugFlags.logBle('✅ Using TX characteristic: ${txChar.uuid}');
+    // ماندع setNotify هنا، نخليه في BagParser.bind
+    return txChar;
   }
 }

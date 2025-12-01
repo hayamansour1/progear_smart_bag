@@ -75,14 +75,14 @@ class BatteryCard extends StatelessWidget {
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 6),
-          if (lastUpdated != null)
-            Text(
-              'Last update • ${_fmtTime(lastUpdated!)}',
-              style:
-                  AppTextStyles.secondary.copyWith(fontSize: AppSizes.fontMd),
-              textAlign: TextAlign.center,
-            ),
+          // const SizedBox(height: 6),
+          // if (lastUpdated != null)
+          //   Text(
+          //     'Last update • ${_fmtTime(lastUpdated!)}',
+          //     style:
+          //         AppTextStyles.secondary.copyWith(fontSize: AppSizes.fontSm),
+          //     textAlign: TextAlign.center,
+          //   ),
         ],
       ),
     );
