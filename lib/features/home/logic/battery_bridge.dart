@@ -2,28 +2,33 @@
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 import 'battery_controller.dart';
+import 'package:progear_smart_bag/features/activity/data/last_controller_store.dart';
 
-/// BatteryBridge: جسر بسيط بين BLE و BatteryController بدون BuildContext.
 class BatteryBridge {
-  /// يربط الكنترولر مع الـ BLE + يحدد controllerID + يحمل من الـ DB
+  /// يربط البطارية مع الـ BLE + يحمل snapshot من الـ DB
   static Future<void> bind(
     BatteryController ctrl,
     BluetoothCharacteristic ch, {
     required String controllerID,
   }) async {
-    // نخزن الـ controllerID داخل الكنترولر
     ctrl.setControllerID(controllerID);
-
-    // نجيب آخر حالة من الـ DB (لو فيه repo)
-    await ctrl.boot();
-
-    // نربط الـ BLE stream
+    await ctrl.boot(); // يجيب آخر حالة من الـ DB لو موجودة
     await ctrl.bindToCharacteristic(ch);
+
+    // نحدّث آخر controllerID محلياً
+    await LastControllerStore.instance.setLastControllerID(controllerID);
   }
 
-  /// فك الربط عن الـ BLE + تصفير الحالة عشان ما تنتقل ليوزر جديد
+  /// boot من آخر شنطة محفوظة (بدون BLE)
+  static Future<void> bootFromLastController(BatteryController ctrl) async {
+    final lastId = await LastControllerStore.instance.getLastControllerID();
+    if (lastId == null || lastId.isEmpty) return;
+    ctrl.setControllerID(lastId);
+    await ctrl.boot();
+  }
+
+  /// فك الربط عن الـ BLE (نخلي آخر قراءة موجودة للأوفلاين)
   static Future<void> unbind(BatteryController ctrl) async {
     await ctrl.unbind();
-    ctrl.resetState(); // ⬅️ هذي الإضافة الوحيدة
   }
 }

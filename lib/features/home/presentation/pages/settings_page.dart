@@ -17,13 +17,18 @@ import 'package:progear_smart_bag/features/home/logic/battery_controller.dart';
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
 
+  // ---------------------------------------------------------------------------
+  // حذف الشنطة
+  // ---------------------------------------------------------------------------
   Future<void> _removeCurrentBag(BuildContext context) async {
     final bt = context.read<BluetoothController>();
     final weightCtrl = context.read<WeightController>();
     final batteryCtrl = context.read<BatteryController>();
     final sb = Supabase.instance.client;
 
-    // نحدد الـ controllerID: المتصل حاليًا أو آخر واحد مخزَّن
+    //
+    // 1) نحدد controllerID
+    //
     final liveId = bt.connectedDevice?.remoteId.str;
     final lastId = await LastControllerStore.instance.getLastControllerID();
     final cid = (liveId != null && liveId.isNotEmpty) ? liveId : lastId;
@@ -38,7 +43,11 @@ class SettingsPage extends StatelessWidget {
       return;
     }
 
+    //
+    // 2) نطلب تأكيد
+    //
     final confirmed = await showDialog<bool>(
+          // ignore: use_build_context_synchronously
           context: context,
           builder: (ctx) => AlertDialog(
             backgroundColor: AppColors.backgroundLight,
@@ -70,39 +79,51 @@ class SettingsPage extends StatelessWidget {
         false;
 
     if (!confirmed) return;
+    if (!context.mounted) return;
 
     try {
-      // 1) نطلب من Supabase إزالة الشنطة وكل تاريخها
+      //
+      // 3) حذف الشنطة من Supabase
+      //
       await sb.rpc('remove_controller', params: {'p_controller': cid});
 
-      // 2) نفصل الـ BLE لو كان متصل على نفس الشنطة
+      //
+      // 4) فصل BLE لو متصل
+      //
       if (bt.connectedDevice != null &&
           bt.connectedDevice!.remoteId.str == cid) {
         await bt.disconnectDevice(bt.connectedDevice!);
       }
 
-      // 3) نفصل الـ Streams
+      //
+      // 5) فصل جميع الـ Streams الخاصة بالوزن والبطارية
+      //
       await WeightBridge.unbind(weightCtrl);
       await BatteryBridge.unbind(batteryCtrl);
 
-      // 4) نرجّع الكنترولرز لحالة نظيفة (عشان يوزر جديد ما يشوف بيانات قديمة)
+      //
+      // 6) إعادة تهيئة الكنترولرات
+      //
       weightCtrl.resetForNewOwner();
       batteryCtrl.resetState();
 
-      // 5) نفضّي آخر controller مخزَّن
+      //
+      // 7) حذف آخر ControllerID مخزّن محليًا
+      //
       await LastControllerStore.instance.clear();
 
       if (!context.mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Bag removed successfully.'),
         ),
       );
 
-      // نرجع لصفحة الهوم
       Navigator.of(context).pop();
     } catch (e) {
       if (!context.mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Failed to remove bag: $e'),
@@ -111,10 +132,12 @@ class SettingsPage extends StatelessWidget {
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // UI
+  // ---------------------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // نخليه شفاف عشان ياخذ نفس الخلفية/الجرادينت من الـ root مثل الهوم
       backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -133,6 +156,9 @@ class SettingsPage extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.all(AppSizes.md),
           children: [
+            //
+            // العنوان
+            //
             Text(
               'Bag Settings',
               style: AppTextStyles.heading2.copyWith(
@@ -142,7 +168,9 @@ class SettingsPage extends StatelessWidget {
             ),
             const SizedBox(height: AppSizes.md),
 
-            // حذف الشنطة
+            //
+            // زر حذف الشنطة
+            //
             Card(
               color: Colors.white.withValues(alpha: .06),
               shape: RoundedRectangleBorder(
@@ -168,7 +196,6 @@ class SettingsPage extends StatelessWidget {
 
             const SizedBox(height: AppSizes.lg),
 
-            // Placeholder لإعدادات قادمة
             Text(
               'More settings coming soon…',
               style: AppTextStyles.secondary.copyWith(

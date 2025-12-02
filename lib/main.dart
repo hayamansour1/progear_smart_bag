@@ -19,8 +19,9 @@ import 'package:progear_smart_bag/features/home/logic/battery_controller.dart';
 // Weight
 import 'package:progear_smart_bag/features/weight/logic/weight_controller.dart';
 
-// Activity unread store
+// Activity unread store + last controller
 import 'package:progear_smart_bag/features/activity/data/activity_seen_store.dart';
+import 'package:progear_smart_bag/features/activity/data/last_controller_store.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,6 +34,7 @@ Future<void> main() async {
 
   // Init local store used for unread badges/dots
   await ActivitySeenStore.instance.init();
+  // LastControllerStore ما يحتاج init صريح، يشتغل lazy من نفسه
 
   runApp(
     MultiProvider(
@@ -49,11 +51,10 @@ Future<void> main() async {
             final ctrl = BatteryController(
               BagParser(),
               repository: repo,
-              // REAL controllerID will be set internally via boot()
-              // أو تقدرين تمررين id ثابت لو حابة تختبرين.
+              // controllerID الفعلي ينعرف لاحقاً من الـ BLE + LastControllerStore
             );
 
-            // نحاول نجيب آخر حالة بطارية من الـ DB (لو فيه controllerID)
+            // نحاول نجيب آخر حالة بطارية من الـ DB (لو قدر يلاقي controllerID)
             ctrl.boot();
             return ctrl;
           },

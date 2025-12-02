@@ -14,6 +14,7 @@ import 'package:progear_smart_bag/core/debug/debug_flags.dart';
 
 /// WeightController
 /// يستقبل قراءات الوزن من BLE، يحسب الفرق عن المتوقع،
+/// ويحدّث الـ DB + يرسل Notifications وقت التغييرات الكبيرة.
 class WeightController extends ChangeNotifier {
   final Logger _log = logger(WeightController);
   final BagParser _parser;
@@ -45,7 +46,7 @@ class WeightController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// boot(): تحميل snapshot من الـ DB كبداية
+  /// boot(): تحميل snapshot من الـ DB كبداية (حتى بدون BLE)
   Future<void> boot({required String controllerID}) async {
     _log.t('boot(): controllerID = $controllerID');
     await loadSnapshotFromDb(controllerID);
@@ -110,7 +111,7 @@ class WeightController extends ChangeNotifier {
     await _parser.unbind();
   }
 
-  /// استدعاء بعد Reset ناجح لتحديث المتوقع محليًا (لو احتجناه)
+  /// استدعاء بعد Set/Reset ناجح لتحديث المتوقع محليًا
   void applyExpectedFromReset(double expectedG) {
     _expectedG = expectedG;
     _deltaG = _currentG - _expectedG;
@@ -179,50 +180,10 @@ class WeightController extends ChangeNotifier {
   }) async {
     final sb = Supabase.instance.client;
 
-    // هل عندنا baseline ولا لا؟
-    final bool noBaseline = _expectedG <= 0;
-
-    _currentG = currentG;
-
-    if (noBaseline) {
-      // أول مرة نقرأ وزن لهذي الشنطة للمستخدم الحالي
-      _expectedG = _currentG;
-      _deltaG = 0;
-      _lastDeltaNotifyAt = DateTime.fromMillisecondsSinceEpoch(0);
-
-      _log.t(
-        'First baseline set for controller=$controllerID -> $_expectedG g',
-      );
-
-      notifyListeners();
-
-      try {
-        // نحدّث جدول الكنترولر بالبلاين لاين الجديد
-        await sb
-            .from('esp32_controller')
-            .upsert({
-              'controllerID': controllerID,
-              'expectedWeight': _expectedG,
-              'currentWeight': _currentG,
-            }, onConflict: 'controllerID');
-
-        // نسجّل القراءة بعد ما ضبطنا الـ expected
-        await sb.rpc('insert_weight_reading', params: {
-          'p_sensor': 'hx711',
-          'p_weight': _currentG,
-          'p_controller': controllerID,
-        });
-      } catch (e) {
-        _log.e('applyReading(first baseline) failed: $e');
-      }
-
-      // ما نرسل تنبيه Over/Under في أول قراءة
-      return;
-    }
-
-    // ---- هنا عندنا baseline جاهز ----
+    // نحفظ الدلتا القديمة عشان منطق الـ notifications
     final prevDelta = _deltaG;
 
+    _currentG = currentG;
     _deltaG = _currentG - _expectedG;
 
     _log.t(
@@ -230,7 +191,8 @@ class WeightController extends ChangeNotifier {
       'currentG=$_currentG, expected=$_expectedG, deltaG=$_deltaG',
     );
 
-    notifyListeners(); // تحديث الـ UI فوراً
+    // نحدّث الـ UI مباشرة
+    notifyListeners();
 
     // 1) تسجيل القراءة في الـ DB + تحديث currentWeight
     try {
@@ -246,6 +208,11 @@ class WeightController extends ChangeNotifier {
           .eq('controllerID', controllerID);
     } catch (e) {
       _log.e('insert_weight_reading / update currentWeight failed: $e');
+    }
+
+    // لو ما عندنا baseline (expected=0)، ما نرسل تنبيهات under/over
+    if (_expectedG <= 0) {
+      return;
     }
 
     // 2) Notifications لو الفرق أكبر من العتبة مع cooldown

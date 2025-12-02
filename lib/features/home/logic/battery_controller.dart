@@ -1,3 +1,4 @@
+// lib/features/home/logic/battery_controller.dart
 import 'dart:async';
 import 'dart:convert';
 
@@ -88,9 +89,8 @@ class BatteryController extends ChangeNotifier {
     final clamped = percent.clamp(0, 100);
     final isFirst = (_percent < 0);
 
-    final changed = isFirst ||
-        (clamped != _percent) ||
-        (charging != _isCharging);
+    final changed =
+        isFirst || (clamped != _percent) || (charging != _isCharging);
 
     _percent = clamped;
     _isCharging = charging;
@@ -209,7 +209,8 @@ class BatteryController extends ChangeNotifier {
     // Only sync if repository + controllerID are provided
     if (_repo == null || _controllerID == null) {
       DebugFlags.logBattery(
-          'BatteryController._maybeUploadToDB: repo=$_repo, controllerID=$_controllerID -> skip');
+        'BatteryController._maybeUploadToDB: repo=$_repo, controllerID=$_controllerID -> skip',
+      );
       return;
     }
 
@@ -224,7 +225,8 @@ class BatteryController extends ChangeNotifier {
         charging: _isCharging,
       );
       DebugFlags.logBattery(
-          'BatteryController._maybeUploadToDB: updated DB to $_percent%, charging=$_isCharging');
+        'BatteryController._maybeUploadToDB: updated DB to $_percent%, charging=$_isCharging',
+      );
     } catch (e) {
       DebugFlags.logBattery('set_battery_status failed: $e');
     }
