@@ -101,7 +101,7 @@ class BatteryController extends ChangeNotifier {
       _maybeUploadToDB();
     }
 
-    // Fire "battery_low" only when crossing from >=21% down to <=20% (مو أول مرة)
+    // Fire "battery_low" only when crossing from >=21% down to <=20% (not on first read)
     final crossedLow = (!isFirst && prev >= 21 && _percent <= 20);
     if (crossedLow) {
       final sb = Supabase.instance.client;

@@ -17,7 +17,7 @@ import 'package:progear_smart_bag/features/home/logic/battery_bridge.dart';
 class ShowBluetoothDevices extends StatelessWidget {
   const ShowBluetoothDevices({super.key});
 
-  // الدالة اللي تمسك الكلك على ديفايس واحد
+  // === tap on single device ===
   Future<void> _handleDeviceTap({
     required BuildContext context,
     required BluetoothController btCtrl,
@@ -32,7 +32,7 @@ class ShowBluetoothDevices extends StatelessWidget {
       return;
     }
 
-    // نجيب الكنترولرز قبل ما نبدأ awaits عشان ما نرجع للـ context بعدين
+    // نجيب الكنترولرز قبل awaits
     final weightCtrl = context.read<WeightController>();
     final batteryCtrl = context.read<BatteryController>();
     final sb = Supabase.instance.client;
@@ -41,47 +41,81 @@ class ShowBluetoothDevices extends StatelessWidget {
       // نوقف الاسكان قبل الاتصال
       await btCtrl.stopScan();
 
-      // 1) نعمل connect عادي
+      // 1) connect
       await btCtrl.connectDevice(device);
       final cid = device.remoteId.str;
 
-      // 2) enforce ownership عبر ensure_controller
+      // 2) enforce ownership via ensure_controller
       try {
         await sb.rpc('ensure_controller', params: {
           'p_controller': cid,
         });
       } on PostgrestException catch (e) {
-        final msg = e.message.toLowerCase();
+        // نحول message/details إلى String
+        final msg = e.message.toString().toLowerCase();
+        final detail = (e.details?.toString() ?? '').toLowerCase();
 
-        // نتحقق من النص اللي كتبناه في الـ function
-        final isInUse = msg.contains('already paired with another account');
+        final isInUse = msg.contains('controller_in_use') ||
+            detail.contains('already paired with another account');
 
         if (isInUse) {
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  'This bag is already paired with another account.\n'
-                  'Ask the current owner to remove it from Settings > Remove bag, '
-                  'then try again.',
-                ),
-                duration: Duration(seconds: 5),
-              ),
-            );
-          }
-          // نفصل الجهاز ونرجع
+          // نفصل البلوتوث + نقفل الشيت + نطلع سناك بار حلو فوق الداشبورد
           await btCtrl.disconnectDevice(device);
+
+          if (context.mounted) {
+            if (Navigator.canPop(context)) {
+              Navigator.of(context).pop(); // نقفل شيت الأجهزة
+            }
+
+            final messenger = ScaffoldMessenger.of(context);
+            messenger
+              ..clearSnackBars()
+              ..showSnackBar(
+                SnackBar(
+                  behavior: SnackBarBehavior.floating,
+                  margin: const EdgeInsets.all(16),
+                  backgroundColor: Colors.redAccent.shade200,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  content: const Text(
+                    'This bag is already paired with another account.\n'
+                    'Ask the current owner to remove it from: Settings → Remove bag, '
+                    'then try again.',
+                  ),
+                  duration: const Duration(seconds: 5),
+                ),
+              );
+          }
           return;
         } else {
-          // خطأ آخر من Supabase
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Failed to pair bag: ${e.message}'),
-              ),
-            );
-          }
+          // أي خطأ ثاني من Supabase
           await btCtrl.disconnectDevice(device);
+
+          final detailStr = e.details?.toString();
+          final userMsg = (detailStr != null && detailStr.isNotEmpty)
+              ? detailStr
+              : e.message.toString();
+
+          if (context.mounted) {
+            if (Navigator.canPop(context)) {
+              Navigator.of(context).pop(); // نقفل الشيت برضو
+            }
+            final messenger = ScaffoldMessenger.of(context);
+            messenger
+              ..clearSnackBars()
+              ..showSnackBar(
+                SnackBar(
+                  behavior: SnackBarBehavior.floating,
+                  margin: const EdgeInsets.all(16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  content: Text('Failed to pair bag: $userMsg'),
+                  duration: const Duration(seconds: 4),
+                ),
+              );
+          }
           return;
         }
       }
@@ -91,6 +125,19 @@ class ShowBluetoothDevices extends StatelessWidget {
       if (characteristic == null) {
         debugPrint('❌ No notify characteristic found');
         await btCtrl.disconnectDevice(device);
+
+        if (context.mounted) {
+          if (Navigator.canPop(context)) {
+            Navigator.of(context).pop();
+          }
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              behavior: SnackBarBehavior.floating,
+              margin: EdgeInsets.all(16),
+              content: Text('No data characteristic found on this device.'),
+            ),
+          );
+        }
         return;
       }
 
@@ -107,20 +154,32 @@ class ShowBluetoothDevices extends StatelessWidget {
         controllerID: cid,
       );
 
-      // منطق expectedWeight والهاندلينق الداخلي صار في WeightController/DB
-
-      // 5) نقفل شيت الأجهزة
-      if (context.mounted) {
+      // 5) نجاح → نقفل شيت الأجهزة
+      if (context.mounted && Navigator.canPop(context)) {
         Navigator.pop(context);
       }
     } catch (e, st) {
       debugPrint('❌ Error in _handleDeviceTap: $e\n$st');
-      // لو صار خطأ في أي خطوة نحاول نفصل الجهاز احتياطًا
       try {
         if (device.isConnected) {
           await btCtrl.disconnectDevice(device);
         }
       } catch (_) {}
+
+      if (context.mounted) {
+        if (Navigator.canPop(context)) {
+          Navigator.of(context).pop();
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            behavior: SnackBarBehavior.floating,
+            margin: EdgeInsets.all(16),
+            content: Text(
+              'Something went wrong while connecting to the bag.',
+            ),
+          ),
+        );
+      }
     }
   }
 
@@ -128,6 +187,13 @@ class ShowBluetoothDevices extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<BluetoothController>(
       builder: (context, controller, child) {
+        // Auto-start scan لما تفتح الشيت
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!controller.isScanning && controller.devices.isEmpty) {
+            controller.startScan();
+          }
+        });
+
         return Container(
           width: double.infinity,
           padding: const EdgeInsets.all(AppSizes.md),
@@ -156,7 +222,7 @@ class ShowBluetoothDevices extends StatelessWidget {
                     icon: const Icon(Icons.close),
                   ),
                   Container(
-                    width: (AppSizes.xl * 2),
+                    width: AppSizes.xl * 2,
                     height: 5,
                     decoration: BoxDecoration(
                       color: Colors.grey[300],
@@ -196,7 +262,7 @@ class ShowBluetoothDevices extends StatelessWidget {
                     ? const Padding(
                         padding: EdgeInsets.only(top: AppSizes.md),
                         child: Text(
-                          'No devices found',
+                          'Searching for nearby devices…',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: AppSizes.fontLg,

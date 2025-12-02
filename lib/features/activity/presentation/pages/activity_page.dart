@@ -15,7 +15,7 @@ import 'package:progear_smart_bag/features/weight/domain/models/weight_entry.dar
 import 'package:progear_smart_bag/features/notifications/data/notifications_repository.dart';
 import 'package:progear_smart_bag/features/notifications/domain/models/notification_event.dart';
 
-// Local seen-store 
+// Local seen-store
 import 'package:progear_smart_bag/features/activity/data/activity_seen_store.dart';
 
 enum ActivityFilter { all, weight, resets }
@@ -73,9 +73,8 @@ class _ActivityPageState extends State<ActivityPage> {
       // Show only weight-related notes in UI (resets/deltas)
       final notesRaw = (results[1] as List<NotificationEvent>);
       final notes = notesRaw
-          .where((n) =>
-              const {'weight_reset', 'weight_delta'}
-                  .contains(n.kind.toLowerCase()))
+          .where((n) => const {'weight_reset', 'weight_delta'}
+              .contains(n.kind.toLowerCase()))
           .map((n) => _ActivityItem.note(n))
           .toList();
 
@@ -87,12 +86,15 @@ class _ActivityPageState extends State<ActivityPage> {
         ..sort((a, b) => b.time.compareTo(a.time));
 
       // Compute badges: items newer than last-seen per category.
-      final unreadAll =
-          merged.where((i) => lastAll == null || i.time.isAfter(lastAll)).length;
-      final unreadW =
-          weights.where((w) => lastWeight == null || w.time.isAfter(lastWeight)).length;
-      final unreadN =
-          notes.where((n) => lastNotes == null || n.time.isAfter(lastNotes)).length;
+      final unreadAll = merged
+          .where((i) => lastAll == null || i.time.isAfter(lastAll))
+          .length;
+      final unreadW = weights
+          .where((w) => lastWeight == null || w.time.isAfter(lastWeight))
+          .length;
+      final unreadN = notes
+          .where((n) => lastNotes == null || n.time.isAfter(lastNotes))
+          .length;
 
       if (!mounted) return;
       setState(() {
@@ -376,14 +378,16 @@ class _ActivityTile extends StatelessWidget {
             : (isUp ? const Color(0xFF159B00) : const Color(0xFFDD0000));
         final icon = delta == 0
             ? Icons.remove_rounded
-            : (isUp ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded);
+            : (isUp
+                ? Icons.arrow_upward_rounded
+                : Icons.arrow_downward_rounded);
 
         return Container(
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.04),
             borderRadius: BorderRadius.circular(18),
-            border:
-                Border.all(color: Colors.white.withValues(alpha: 0.08), width: 1.2),
+            border: Border.all(
+                color: Colors.white.withValues(alpha: 0.08), width: 1.2),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
@@ -406,7 +410,8 @@ class _ActivityTile extends StatelessWidget {
                     Text('Current: ${w.currentG.toStringAsFixed(1)} g',
                         style: AppTextStyles.secondarybody),
                     const SizedBox(height: 2),
-                    Text('Expected: ${w.expectedSnapshotG.toStringAsFixed(1)} g',
+                    Text(
+                        'Expected: ${w.expectedSnapshotG.toStringAsFixed(1)} g',
                         style: AppTextStyles.button),
                     const SizedBox(height: 4),
                     Text(_fmt(w.time),
@@ -415,7 +420,7 @@ class _ActivityTile extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: AppSizes.md),
+              const SizedBox(width: AppSizes.sm),
               Text(
                 '${delta > 0 ? '+' : ''}${delta.toStringAsFixed(1)} g',
                 style: AppTextStyles.heading1.copyWith(color: color),
@@ -431,9 +436,11 @@ class _ActivityTile extends StatelessWidget {
         String? metaLine;
         final meta = n.meta;
         if (meta != null) {
-          if (n.kind.toLowerCase() == 'weight_reset' && meta['current_g'] != null) {
+          if (n.kind.toLowerCase() == 'weight_reset' &&
+              meta['current_g'] != null) {
             metaLine = 'Snapshot: ${meta['current_g']} g';
-          } else if (n.kind.toLowerCase() == 'weight_delta' && meta['delta_g'] != null) {
+          } else if (n.kind.toLowerCase() == 'weight_delta' &&
+              meta['delta_g'] != null) {
             final d = (meta['delta_g'] as num).toDouble();
             metaLine = 'Delta: ${d.toStringAsFixed(1)} g';
           }
@@ -443,8 +450,8 @@ class _ActivityTile extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.04),
             borderRadius: BorderRadius.circular(18),
-            border:
-                Border.all(color: Colors.white.withValues(alpha: 0.08), width: 1.2),
+            border: Border.all(
+                color: Colors.white.withValues(alpha: 0.08), width: 1.2),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
