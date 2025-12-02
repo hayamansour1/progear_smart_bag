@@ -1,3 +1,4 @@
+// lib/features/bag/presentation/widgets/connect_success_sheet.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -6,10 +7,7 @@ import 'package:progear_smart_bag/core/constants/app_text_styles.dart';
 import 'package:progear_smart_bag/core/constants/app_colors.dart';
 import 'package:progear_smart_bag/shared/widgets/progear_button.dart';
 
-/// شيت بسيط يطلع بعد نجاح الاتصال بالشنطة.
-/// يعطي إحساس "Everything is ready" + زر يبدأ خطوة Set Expected Weight.
 class ConnectSuccessSheet extends StatelessWidget {
-  /// ينادى لما اليوزر يضغط "Set bag weight now"
   final VoidCallback? onSetWeight;
 
   const ConnectSuccessSheet({
@@ -33,7 +31,6 @@ class ConnectSuccessSheet extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // ─ Grab handle
             Container(
               width: 44,
               height: 5,
@@ -43,8 +40,6 @@ class ConnectSuccessSheet extends StatelessWidget {
                 borderRadius: BorderRadius.circular(99),
               ),
             ),
-
-            // ─ دائرة خضرا + أيقونة صح
             Container(
               height: 140,
               width: 140,
@@ -69,33 +64,27 @@ class ConnectSuccessSheet extends StatelessWidget {
                 ),
               ),
             ),
-
             const SizedBox(height: AppSizes.sm),
-
             const Text(
               "You’re all set!",
               textAlign: TextAlign.center,
               style: AppTextStyles.heading1,
             ),
             const SizedBox(height: AppSizes.sm),
-
             Text(
               "Your ProGear bag is now connected.\n"
               "Let’s save your usual bag weight so we can track any changes.",
               textAlign: TextAlign.center,
               style: AppTextStyles.secondary,
             ),
-
             const SizedBox(height: AppSizes.xxl),
-
-            // ─ الأزرار
             Row(
               children: [
                 Expanded(
                   child: ProGearButton.outlined(
                     label: 'Later',
-                    onPressed: () async {
-                      await HapticFeedback.selectionClick();
+                    onPressed: () {
+                      HapticFeedback.selectionClick();
                       Navigator.pop(context, false);
                     },
                     size: ProGearButtonSize.lg,
@@ -105,9 +94,8 @@ class ConnectSuccessSheet extends StatelessWidget {
                 Expanded(
                   child: ProGearButton.primary(
                     label: 'Set bag weight now',
-                    onPressed: () async {
-                      await HapticFeedback.selectionClick();
-                      // نقفل هذا الشيت وبعدين نشغل الكولباك عشان تفتح شيت الوزن
+                    onPressed: () {
+                      HapticFeedback.selectionClick();
                       Navigator.pop(context, true);
                       if (onSetWeight != null) {
                         onSetWeight!();
@@ -118,7 +106,6 @@ class ConnectSuccessSheet extends StatelessWidget {
                 ),
               ],
             ),
-
             const SizedBox(height: AppSizes.lg),
           ],
         ),

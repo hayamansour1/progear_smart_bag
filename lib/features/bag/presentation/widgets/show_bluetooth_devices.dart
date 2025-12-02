@@ -13,9 +13,17 @@ import 'package:progear_smart_bag/features/weight/logic/weight_controller.dart';
 import 'package:progear_smart_bag/features/home/logic/battery_controller.dart';
 import 'package:progear_smart_bag/features/weight/logic/weight_bridge.dart';
 import 'package:progear_smart_bag/features/home/logic/battery_bridge.dart';
+import 'package:progear_smart_bag/features/home/presentation/widgets/set_expected_weight_sheet.dart';
 
+/// Sheet لعرض أجهزة البلوتوث.
+/// [parentContext] ما عاد نستخدمه داخليًا، بس مخليه عشان ما يكسر الاستدعاءات الحالية.
 class ShowBluetoothDevices extends StatelessWidget {
-  const ShowBluetoothDevices({super.key});
+  final BuildContext parentContext;
+
+  const ShowBluetoothDevices({
+    super.key,
+    required this.parentContext,
+  });
 
   // === tap on single device ===
   Future<void> _handleDeviceTap({
@@ -23,6 +31,12 @@ class ShowBluetoothDevices extends StatelessWidget {
     required BluetoothController btCtrl,
     required BluetoothDevice device,
   }) async {
+    // نجيب ScaffoldMessenger و الكنترولرز من نفس context حاليًا وهو ما زال mounted
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final weightCtrl = context.read<WeightController>();
+    final batteryCtrl = context.read<BatteryController>();
+    final sb = Supabase.instance.client;
+
     // لو الجهاز هذا قاعد يعمل connect/disconnect حاليًا → نتجاهل التاب
     if (btCtrl.isDeviceLoading(device.remoteId.str)) return;
 
@@ -31,11 +45,6 @@ class ShowBluetoothDevices extends StatelessWidget {
       await btCtrl.disconnectDevice(device);
       return;
     }
-
-    // نجيب الكنترولرز قبل awaits
-    final weightCtrl = context.read<WeightController>();
-    final batteryCtrl = context.read<BatteryController>();
-    final sb = Supabase.instance.client;
 
     try {
       // نوقف الاسكان قبل الاتصال
@@ -51,7 +60,6 @@ class ShowBluetoothDevices extends StatelessWidget {
           'p_controller': cid,
         });
       } on PostgrestException catch (e) {
-        // نحول message/details إلى String
         final msg = e.message.toString().toLowerCase();
         final detail = (e.details?.toString() ?? '').toLowerCase();
 
@@ -59,37 +67,28 @@ class ShowBluetoothDevices extends StatelessWidget {
             detail.contains('already paired with another account');
 
         if (isInUse) {
-          // نفصل البلوتوث + نقفل الشيت + نطلع سناك بار حلو فوق الداشبورد
           await btCtrl.disconnectDevice(device);
 
-          if (context.mounted) {
-            if (Navigator.canPop(context)) {
-              Navigator.of(context).pop(); // نقفل شيت الأجهزة
-            }
-
-            final messenger = ScaffoldMessenger.of(context);
-            messenger
-              ..clearSnackBars()
-              ..showSnackBar(
-                SnackBar(
-                  behavior: SnackBarBehavior.floating,
-                  margin: const EdgeInsets.all(16),
-                  backgroundColor: Colors.redAccent.shade200,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  content: const Text(
-                    'This bag is already paired with another account.\n'
-                    'Ask the current owner to remove it from: Settings → Remove bag, '
-                    'then try again.',
-                  ),
-                  duration: const Duration(seconds: 5),
+          scaffoldMessenger
+            ..clearSnackBars()
+            ..showSnackBar(
+              SnackBar(
+                behavior: SnackBarBehavior.floating,
+                margin: const EdgeInsets.all(16),
+                backgroundColor: Colors.redAccent.shade200,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
                 ),
-              );
-          }
+                content: const Text(
+                  'This bag is already paired with another account.\n'
+                  'Ask the current owner to remove it from: Settings → Remove bag, '
+                  'then try again.',
+                ),
+                duration: const Duration(seconds: 5),
+              ),
+            );
           return;
         } else {
-          // أي خطأ ثاني من Supabase
           await btCtrl.disconnectDevice(device);
 
           final detailStr = e.details?.toString();
@@ -97,47 +96,36 @@ class ShowBluetoothDevices extends StatelessWidget {
               ? detailStr
               : e.message.toString();
 
-          if (context.mounted) {
-            if (Navigator.canPop(context)) {
-              Navigator.of(context).pop(); // نقفل الشيت برضو
-            }
-            final messenger = ScaffoldMessenger.of(context);
-            messenger
-              ..clearSnackBars()
-              ..showSnackBar(
-                SnackBar(
-                  behavior: SnackBarBehavior.floating,
-                  margin: const EdgeInsets.all(16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  content: Text('Failed to pair bag: $userMsg'),
-                  duration: const Duration(seconds: 4),
+          scaffoldMessenger
+            ..clearSnackBars()
+            ..showSnackBar(
+              SnackBar(
+                behavior: SnackBarBehavior.floating,
+                margin: const EdgeInsets.all(16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
                 ),
-              );
-          }
+                content: Text('Failed to pair bag: $userMsg'),
+                duration: const Duration(seconds: 4),
+              ),
+            );
           return;
         }
       }
 
-      // 3) نجيب الـ characteristic حق الـ notify
+      // 3) characteristic حق الـ notify
       final characteristic = await btCtrl.getNotifyCharacteristic();
       if (characteristic == null) {
         debugPrint('❌ No notify characteristic found');
         await btCtrl.disconnectDevice(device);
 
-        if (context.mounted) {
-          if (Navigator.canPop(context)) {
-            Navigator.of(context).pop();
-          }
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              behavior: SnackBarBehavior.floating,
-              margin: EdgeInsets.all(16),
-              content: Text('No data characteristic found on this device.'),
-            ),
-          );
-        }
+        scaffoldMessenger.showSnackBar(
+          const SnackBar(
+            behavior: SnackBarBehavior.floating,
+            margin: EdgeInsets.all(16),
+            content: Text('No data characteristic found on this device.'),
+          ),
+        );
         return;
       }
 
@@ -154,9 +142,32 @@ class ShowBluetoothDevices extends StatelessWidget {
         controllerID: cid,
       );
 
-      // 5) نجاح → نقفل شيت الأجهزة
-      if (context.mounted && Navigator.canPop(context)) {
-        Navigator.pop(context);
+      // 5) افتح شيت SetExpectedWeight فوق شيت الأجهزة
+      debugPrint(
+          '⚙️ ShowBluetoothDevices: opening SetExpectedWeightSheet for $cid');
+
+      final saved = await showModalBottomSheet<bool>(
+        context: context,
+        useSafeArea: true,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => SetExpectedWeightSheet(controllerID: cid),
+      );
+
+      // لو رجع true نطلع SnackBar بسيط من نفس الـ Scaffold
+      if (saved == true) {
+        scaffoldMessenger.showSnackBar(
+          const SnackBar(
+            behavior: SnackBarBehavior.floating,
+            margin: EdgeInsets.all(16),
+            content: Text('Bag weight saved as your default weight.'),
+          ),
+        );
+      }
+
+      // في كل الأحوال بعد ما يخلص شيت الوزن نقفل شيت البلوتوث نفسه
+      if (context.mounted) {
+        Navigator.of(context).pop();
       }
     } catch (e, st) {
       debugPrint('❌ Error in _handleDeviceTap: $e\n$st');
@@ -166,19 +177,17 @@ class ShowBluetoothDevices extends StatelessWidget {
         }
       } catch (_) {}
 
+      // نستخدم scaffoldMessenger اللي أخذناه قبل أي pop
+      scaffoldMessenger.showSnackBar(
+        const SnackBar(
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.all(16),
+          content: Text('Something went wrong while connecting to the bag.'),
+        ),
+      );
+
       if (context.mounted) {
-        if (Navigator.canPop(context)) {
-          Navigator.of(context).pop();
-        }
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            behavior: SnackBarBehavior.floating,
-            margin: EdgeInsets.all(16),
-            content: Text(
-              'Something went wrong while connecting to the bag.',
-            ),
-          ),
-        );
+        Navigator.of(context).pop();
       }
     }
   }

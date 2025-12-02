@@ -4,7 +4,7 @@ import 'package:progear_smart_bag/core/constants/app_images.dart';
 import 'package:progear_smart_bag/core/constants/app_sizes.dart';
 import 'package:progear_smart_bag/core/constants/app_text_styles.dart';
 import 'package:progear_smart_bag/features/bag/controllers/bluetooth_controller.dart';
-import 'package:progear_smart_bag/features/bag/presentation/widgets/button_scan_search.dart';
+// import 'package:progear_smart_bag/features/bag/presentation/widgets/button_scan_search.dart';
 import 'package:provider/provider.dart';
 
 class AlertBagConnection extends StatelessWidget {

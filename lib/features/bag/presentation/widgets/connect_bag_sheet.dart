@@ -64,7 +64,7 @@ class ConnectBagSheet extends StatelessWidget {
               ),
               child: Center(
                 child: Image.asset(
-                  AppImages.logoBag, // أو صورة خاصة بالـ connect bag لو عندك
+                  AppImages.logoBag,
                   width: isPortrait ? 90 : 90,
                   fit: BoxFit.contain,
                 ),
@@ -79,19 +79,10 @@ class ConnectBagSheet extends StatelessWidget {
 
             const SizedBox(height: AppSizes.md),
 
-            // const Text(
-            //   "Just follow these steps:",
-            //   textAlign: TextAlign.center,
-            //   style: AppTextStyles.secondary,
-            // ),
-
-            // const SizedBox(height: AppSizes.sm),
-
-// --- Smaller Steps Box ---
             Align(
               alignment: Alignment.center,
               child: Container(
-                width: 280, // ← أصغر وأحلى (بدل الـ full width)
+                width: 280,
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppSizes.md,
                   vertical: AppSizes.sm,
@@ -148,14 +139,16 @@ class ConnectBagSheet extends StatelessWidget {
                   child: ProGearButton.primary(
                     label: 'Connect now',
                     onPressed: () {
-                      // نقفل هذا الشيت، وبعدين نفتح شيت البلوتوث
+                      // نقفل هذا الشيت، وبعدين نفتح شيت البلوتوث مع parentContext = context
                       Navigator.pop(context);
                       showModalBottomSheet(
                         context: context,
                         useSafeArea: true,
                         isScrollControlled: true,
                         backgroundColor: Colors.transparent,
-                        builder: (_) => const ShowBluetoothDevices(),
+                        builder: (_) => ShowBluetoothDevices(
+                          parentContext: context,
+                        ),
                       );
                     },
                     size: ProGearButtonSize.lg,

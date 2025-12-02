@@ -1,3 +1,4 @@
+// lib/features/bag/presentation/widgets/button_scan_search.dart
 import 'package:flutter/material.dart';
 import 'package:progear_smart_bag/core/constants/app_colors.dart';
 import 'package:progear_smart_bag/features/bag/controllers/bluetooth_controller.dart';
@@ -11,21 +12,27 @@ class ButtonScanSearch extends StatelessWidget {
   Widget build(BuildContext context) {
     return ElevatedButton(
       style: ButtonStyle(
-          foregroundColor: WidgetStatePropertyAll(Colors.white),
-          backgroundColor: WidgetStatePropertyAll(AppColors.primaryBlue),
-          shape: WidgetStatePropertyAll(RoundedRectangleBorder(
+        foregroundColor: const WidgetStatePropertyAll(Colors.white),
+        backgroundColor: const WidgetStatePropertyAll(AppColors.primaryBlue),
+        shape: WidgetStatePropertyAll(
+          RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
-          ))),
+          ),
+        ),
+      ),
       onPressed: () {
         context.read<BluetoothController>().startScan();
         showModalBottomSheet(
           context: context,
           backgroundColor: Colors.transparent,
           isScrollControlled: true,
-          builder: (_) => const ShowBluetoothDevices(),
+          useSafeArea: true,
+          builder: (_) => ShowBluetoothDevices(
+            parentContext: context,
+          ),
         );
       },
-      child: Text('start scan'),
+      child: const Text('start scan'),
     );
   }
 }

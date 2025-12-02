@@ -1,3 +1,4 @@
+// lib/features/home/presentation/widgets/battery_card.dart
 import 'package:flutter/material.dart';
 import 'package:cupertino_battery_indicator/cupertino_battery_indicator.dart';
 import 'package:progear_smart_bag/core/constants/app_sizes.dart';
@@ -26,11 +27,15 @@ class BatteryCard extends StatelessWidget {
     return _iosGreen;
   }
 
+  // --------- (Optional) format time function ----------
+  // تركناها هنا كومنت لو احتجتيها مستقبلًا
+  /*
   String _fmtTime(DateTime t) {
     final l = t.toLocal();
     return '${l.year}-${l.month.toString().padLeft(2, '0')}-${l.day.toString().padLeft(2, '0')} • '
         '${l.hour.toString().padLeft(2, '0')}:${l.minute.toString().padLeft(2, '0')}';
   }
+  */
 
   @override
   Widget build(BuildContext context) {
@@ -62,7 +67,11 @@ class BatteryCard extends StatelessWidget {
                   ),
                 ),
                 if (isCharging)
-                  const Icon(Icons.bolt_rounded, color: Colors.white, size: 18),
+                  const Icon(
+                    Icons.bolt_rounded,
+                    color: Colors.white,
+                    size: 18,
+                  ),
               ],
             ),
           ),
@@ -75,14 +84,20 @@ class BatteryCard extends StatelessWidget {
               fontWeight: FontWeight.w700,
             ),
           ),
-          // const SizedBox(height: 6),
-          // if (lastUpdated != null)
-          //   Text(
-          //     'Last update • ${_fmtTime(lastUpdated!)}',
-          //     style:
-          //         AppTextStyles.secondary.copyWith(fontSize: AppSizes.fontSm),
-          //     textAlign: TextAlign.center,
-          //   ),
+
+          // ❌ حذفنا عرض وقت آخر تحديث — تركناه كومنت فقط
+          /*
+          if (lastUpdated != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              'Last update • ${_fmtTime(lastUpdated!)}',
+              style: AppTextStyles.secondary.copyWith(
+                fontSize: AppSizes.fontSm,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+          */
         ],
       ),
     );

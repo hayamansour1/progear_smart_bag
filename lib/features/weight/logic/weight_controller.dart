@@ -14,7 +14,6 @@ import 'package:progear_smart_bag/core/debug/debug_flags.dart';
 
 /// WeightController
 /// يستقبل قراءات الوزن من BLE، يحسب الفرق عن المتوقع،
-/// ويحدّث الـ DB + يرسل Notifications وقت التغييرات الكبيرة.
 class WeightController extends ChangeNotifier {
   final Logger _log = logger(WeightController);
   final BagParser _parser;
@@ -180,10 +179,39 @@ class WeightController extends ChangeNotifier {
   }) async {
     final sb = Supabase.instance.client;
 
-    // نحفظ الدلتا القديمة عشان منطق الـ notifications
-    final prevDelta = _deltaG;
+    final bool noBaseline = _expectedG <= 0;
 
     _currentG = currentG;
+
+    if (noBaseline) {
+      // ✅ أول مرة: ما عندنا baseline
+      // نخلي expected = 0 ونحدّث الـ UI فقط
+      _deltaG = 0;
+
+      _log.t(
+        'no baseline yet for controller=$controllerID -> current=$_currentG, expected=$_expectedG',
+      );
+
+      notifyListeners();
+
+      // (اختياري) لو تبين تخزنين الريتنغ كـ history:
+      try {
+        await sb.rpc('insert_weight_reading', params: {
+          'p_sensor': 'hx711',
+          'p_weight': _currentG,
+          'p_controller': controllerID,
+        });
+      } catch (e) {
+        _log.e('insert_weight_reading(noBaseline) failed: $e');
+      }
+
+      // ⚠️ أهم شيء: ما نلمس esp32_controller هنا عشان RLS
+      return;
+    }
+
+    // ---- هنا عندنا baseline جاهز ----
+    final prevDelta = _deltaG;
+
     _deltaG = _currentG - _expectedG;
 
     _log.t(
@@ -191,8 +219,7 @@ class WeightController extends ChangeNotifier {
       'currentG=$_currentG, expected=$_expectedG, deltaG=$_deltaG',
     );
 
-    // نحدّث الـ UI مباشرة
-    notifyListeners();
+    notifyListeners(); // تحديث الـ UI فوراً
 
     // 1) تسجيل القراءة في الـ DB + تحديث currentWeight
     try {
@@ -208,11 +235,6 @@ class WeightController extends ChangeNotifier {
           .eq('controllerID', controllerID);
     } catch (e) {
       _log.e('insert_weight_reading / update currentWeight failed: $e');
-    }
-
-    // لو ما عندنا baseline (expected=0)، ما نرسل تنبيهات under/over
-    if (_expectedG <= 0) {
-      return;
     }
 
     // 2) Notifications لو الفرق أكبر من العتبة مع cooldown
