@@ -1,7 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// LastControllerStore
-/// يخزن آخر controllerID استخدمه اليوزر محليًا في الجهاز.
 class LastControllerStore {
   LastControllerStore._();
   static final LastControllerStore instance = LastControllerStore._();

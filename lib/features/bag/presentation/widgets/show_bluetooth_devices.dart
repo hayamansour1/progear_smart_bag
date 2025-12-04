@@ -14,9 +14,11 @@ import 'package:progear_smart_bag/features/home/logic/battery_controller.dart';
 import 'package:progear_smart_bag/features/weight/logic/weight_bridge.dart';
 import 'package:progear_smart_bag/features/home/logic/battery_bridge.dart';
 import 'package:progear_smart_bag/features/home/presentation/widgets/set_expected_weight_sheet.dart';
+import 'package:progear_smart_bag/shared/widgets/progear_toast.dart';
 
 /// Sheet لعرض أجهزة البلوتوث.
-/// [parentContext] ما عاد نستخدمه داخليًا، بس مخليه عشان ما يكسر الاستدعاءات الحالية.
+/// parentContext موجود للحاجة المستقبلية لو حابين نستخدمه، لكن حالياً
+/// كل شيء يعتمد على context الخاص بالشيت نفسه.
 class ShowBluetoothDevices extends StatelessWidget {
   final BuildContext parentContext;
 
@@ -31,20 +33,22 @@ class ShowBluetoothDevices extends StatelessWidget {
     required BluetoothController btCtrl,
     required BluetoothDevice device,
   }) async {
-    // نجيب ScaffoldMessenger و الكنترولرز من نفس context حاليًا وهو ما زال mounted
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
-    final weightCtrl = context.read<WeightController>();
-    final batteryCtrl = context.read<BatteryController>();
-    final sb = Supabase.instance.client;
+    // لو فيه عملية جارية على نفس الديفايس نتجاهل
+    if (btCtrl.isDeviceLoading(device.remoteId.str)) {
+      return;
+    }
 
-    // لو الجهاز هذا قاعد يعمل connect/disconnect حاليًا → نتجاهل التاب
-    if (btCtrl.isDeviceLoading(device.remoteId.str)) return;
-
-    // لو متصل حاليًا → نفصل فقط ونرجع
+    // لو متصل → نفصل و نرجع
     if (device.isConnected) {
       await btCtrl.disconnectDevice(device);
       return;
     }
+
+    final sb = Supabase.instance.client;
+    final nav = Navigator.of(context);
+
+    final weightCtrl = context.read<WeightController>();
+    final batteryCtrl = context.read<BatteryController>();
 
     try {
       // نوقف الاسكان قبل الاتصال
@@ -54,7 +58,7 @@ class ShowBluetoothDevices extends StatelessWidget {
       await btCtrl.connectDevice(device);
       final cid = device.remoteId.str;
 
-      // 2) enforce ownership via ensure_controller
+      // 2) ensure_controller
       try {
         await sb.rpc('ensure_controller', params: {
           'p_controller': cid,
@@ -66,70 +70,56 @@ class ShowBluetoothDevices extends StatelessWidget {
         final isInUse = msg.contains('controller_in_use') ||
             detail.contains('already paired with another account');
 
-        if (isInUse) {
+        // نفصل في كل الأحوال
+        if (device.isConnected) {
           await btCtrl.disconnectDevice(device);
-
-          scaffoldMessenger
-            ..clearSnackBars()
-            ..showSnackBar(
-              SnackBar(
-                behavior: SnackBarBehavior.floating,
-                margin: const EdgeInsets.all(16),
-                backgroundColor: Colors.redAccent.shade200,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                content: const Text(
-                  'This bag is already paired with another account.\n'
-                  'Ask the current owner to remove it from: Settings → Remove bag, '
-                  'then try again.',
-                ),
-                duration: const Duration(seconds: 5),
-              ),
-            );
-          return;
-        } else {
-          await btCtrl.disconnectDevice(device);
-
-          final detailStr = e.details?.toString();
-          final userMsg = (detailStr != null && detailStr.isNotEmpty)
-              ? detailStr
-              : e.message.toString();
-
-          scaffoldMessenger
-            ..clearSnackBars()
-            ..showSnackBar(
-              SnackBar(
-                behavior: SnackBarBehavior.floating,
-                margin: const EdgeInsets.all(16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                content: Text('Failed to pair bag: $userMsg'),
-                duration: const Duration(seconds: 4),
-              ),
-            );
-          return;
         }
+
+        if (!context.mounted) return;
+
+        if (isInUse) {
+          if (nav.canPop()) nav.pop();
+
+          ProGearToast.show(
+            'This bag is already paired with another account.\n'
+            'Ask the current owner to remove it from: Settings → Remove bag, '
+            'then try again.',
+            style: ToastStyle.error,
+          );
+        } else {
+          final detailStr = e.details?.toString();
+          final userMsg =
+              (detailStr != null && detailStr.isNotEmpty) ? detailStr : e.message;
+
+          if (nav.canPop()) nav.pop();
+
+          ProGearToast.show(
+            'Failed to pair bag: $userMsg',
+            style: ToastStyle.error,
+          );
+        }
+        return;
       }
 
-      // 3) characteristic حق الـ notify
+      // 3) characteristic
       final characteristic = await btCtrl.getNotifyCharacteristic();
       if (characteristic == null) {
-        debugPrint('❌ No notify characteristic found');
-        await btCtrl.disconnectDevice(device);
+        if (device.isConnected) {
+          await btCtrl.disconnectDevice(device);
+        }
 
-        scaffoldMessenger.showSnackBar(
-          const SnackBar(
-            behavior: SnackBarBehavior.floating,
-            margin: EdgeInsets.all(16),
-            content: Text('No data characteristic found on this device.'),
-          ),
+        if (!context.mounted) return;
+
+        if (nav.canPop()) nav.pop();
+
+        ProGearToast.show(
+          'No data characteristic found on this device.',
+          style: ToastStyle.error,
         );
         return;
       }
 
-      // 4) نربط Weight + Battery بالـ BLE
+      // 4) bind weight + battery
       await WeightBridge.bind(
         weightCtrl,
         characteristic,
@@ -142,53 +132,69 @@ class ShowBluetoothDevices extends StatelessWidget {
         controllerID: cid,
       );
 
-      // 5) افتح شيت SetExpectedWeight فوق شيت الأجهزة
-      debugPrint(
-          '⚙️ ShowBluetoothDevices: opening SetExpectedWeightSheet for $cid');
+      // 5) نشيك expectedWeight في الـ DB
+      bool shouldShowSetSheet = false;
+      try {
+        final row = await sb
+            .from('esp32_controller')
+            .select('expectedWeight')
+            .eq('controllerID', cid)
+            .maybeSingle();
 
-      final saved = await showModalBottomSheet<bool>(
-        context: context,
-        useSafeArea: true,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (_) => SetExpectedWeightSheet(controllerID: cid),
-      );
+        final exp = (row?['expectedWeight'] as num?)?.toDouble();
+        if (exp == null || exp <= 0) {
+          shouldShowSetSheet = true;
+        }
+      } catch (_) {
+        // لو فشلنا في القراءة من الـ DB ما نوقف الكونكت، بس ما نعرض الشيت
+      }
 
-      // لو رجع true نطلع SnackBar بسيط من نفس الـ Scaffold
-      if (saved == true) {
-        scaffoldMessenger.showSnackBar(
-          const SnackBar(
-            behavior: SnackBarBehavior.floating,
-            margin: EdgeInsets.all(16),
-            content: Text('Bag weight saved as your default weight.'),
-          ),
+      // 6) لو نحتاج baseline نعرض الشيت فوق شيت البلوتوث
+      if (shouldShowSetSheet) {
+        if (!context.mounted) return;
+
+        final saved = await showModalBottomSheet<bool>(
+          context: context,
+          useSafeArea: true,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (_) => SetExpectedWeightSheet(controllerID: cid),
         );
+
+        if (saved == true) {
+          await weightCtrl.loadSnapshotFromDb(cid);
+        }
       }
 
-      // في كل الأحوال بعد ما يخلص شيت الوزن نقفل شيت البلوتوث نفسه
-      if (context.mounted) {
-        Navigator.of(context).pop();
+      // 7) بعد ما نخلص كله نقفل شيت البلوتوث
+      if (!context.mounted) return;
+
+      if (nav.canPop()) {
+        nav.pop();
       }
-    } catch (e, st) {
-      debugPrint('❌ Error in _handleDeviceTap: $e\n$st');
+
+      // 8) Toast نجاح
+      ProGearToast.show(
+        'Bag connected successfully.',
+        style: ToastStyle.success,
+      );
+    } catch (_) {
       try {
         if (device.isConnected) {
           await btCtrl.disconnectDevice(device);
         }
       } catch (_) {}
 
-      // نستخدم scaffoldMessenger اللي أخذناه قبل أي pop
-      scaffoldMessenger.showSnackBar(
-        const SnackBar(
-          behavior: SnackBarBehavior.floating,
-          margin: EdgeInsets.all(16),
-          content: Text('Something went wrong while connecting to the bag.'),
-        ),
-      );
+      if (!context.mounted) return;
 
-      if (context.mounted) {
+      if (Navigator.of(context).canPop()) {
         Navigator.of(context).pop();
       }
+
+      ProGearToast.show(
+        'Something went wrong while connecting to the bag.',
+        style: ToastStyle.error,
+      );
     }
   }
 

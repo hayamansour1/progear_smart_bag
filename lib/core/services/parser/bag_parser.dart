@@ -5,7 +5,6 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:progear_smart_bag/core/debug/debug_flags.dart';
 
 /// BagParser
-/// يحوّل إشعارات الـ BLE (chunks) إلى سطور كاملة مبنية على '\n'
 class BagParser {
   final StreamController<String> _linesCtrl =
       StreamController<String>.broadcast();
@@ -14,11 +13,9 @@ class BagParser {
 
   StreamSubscription<List<int>>? _sub;
 
-  // بوفر داخلي لتجميع القطع قبل ما نطلع سطر كامل
   String _buffer = '';
 
   Future<void> bind(BluetoothCharacteristic characteristic) async {
-    // نلغي أي اشتراك قديم
     await _sub?.cancel();
 
     DebugFlags.logParser(
@@ -30,14 +27,11 @@ class BagParser {
         DebugFlags.logParser('🧩 RAW BLE BYTES: $bytes');
         if (bytes.isEmpty) return;
 
-        // نحول البايتات إلى نص (ممكن تجي نص الرسالة فقط)
         final chunk = utf8.decode(bytes, allowMalformed: true);
         DebugFlags.logParser('🧩 RAW BLE TEXT CHUNK: $chunk');
 
-        // نضيف التشنك للبفر
         _buffer += chunk;
 
-        // نطلع كل سطر كامل ينتهي بـ \n
         int newlineIndex;
         while ((newlineIndex = _buffer.indexOf('\n')) != -1) {
           final line = _buffer.substring(0, newlineIndex).trim();

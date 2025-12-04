@@ -1,3 +1,4 @@
+// lib/features/home/presentation/widgets/reset_weight_sheet.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -6,21 +7,17 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:progear_smart_bag/core/constants/app_sizes.dart';
 import 'package:progear_smart_bag/core/constants/app_text_styles.dart';
 import 'package:progear_smart_bag/core/constants/app_colors.dart';
-import 'package:progear_smart_bag/shared/widgets/progear_button.dart';
 import 'package:progear_smart_bag/core/constants/app_images.dart';
+
+import 'package:progear_smart_bag/shared/widgets/progear_button.dart';
+import 'package:progear_smart_bag/features/weight/logic/weight_controller.dart';
+import 'package:progear_smart_bag/shared/widgets/progear_toast.dart';
 
 // Local unread store (header dot / badges)
 import 'package:progear_smart_bag/features/activity/data/activity_seen_store.dart';
 
-// Update WeightController locally after reset
-import 'package:progear_smart_bag/features/weight/logic/weight_controller.dart';
-
-// Floating toast (uses rootMessengerKey)
-import 'package:progear_smart_bag/shared/widgets/progear_toast.dart';
-
 class ResetWeightSheet extends StatefulWidget {
-  /// NOTE: when BLE is ready, pass the real connected controller id from Bluetooth layer:
-  /// final controllerID = context.read<BluetoothController>().connectedDevice?.remoteId.str;
+  /// مرري الـ controllerID حق الشنطة المتصلة حاليًا
   final String controllerID;
 
   const ResetWeightSheet({super.key, required this.controllerID});
@@ -64,12 +61,20 @@ class _ResetWeightSheetState extends State<ResetWeightSheet> {
     }
   }
 
+  String _fmtTime(DateTime t) {
+    final l = t.toLocal();
+    return '${l.year}-${l.month.toString().padLeft(2, '0')}-'
+        '${l.day.toString().padLeft(2, '0')} '
+        '${l.hour.toString().padLeft(2, '0')}:'
+        '${l.minute.toString().padLeft(2, '0')}';
+  }
+
   /// Use live weight from WeightController, update expectedWeight in DB,
   /// log a notification, update local controller + unread activity.
   Future<void> _confirmReset() async {
     setState(() => _loading = true);
     try {
-      // 1) نجيب الوزن الحالي من الكنترولر (live BLE)
+      // 1) الوزن الحالي من الكنترولر (live BLE)
       final weightCtrl = context.read<WeightController>();
       final currentG = weightCtrl.currentG;
 
@@ -99,11 +104,11 @@ class _ResetWeightSheetState extends State<ResetWeightSheet> {
       // 4) نحدّث الـ WeightController محليًا عشان UI يتحدث فورًا
       weightCtrl.applyExpectedFromReset(currentG);
 
-      // 5) نعلّم الـ ActivitySeenStore إن فيه حدث جديد
+      // 5) نعلّم الـ ActivitySeenStore إن فيه حدث جديد (للبادجات)
       try {
         await ActivitySeenStore.instance.bumpUnread(widget.controllerID);
       } catch (_) {
-        // مو ضروري لو فشل، بس للبادجات
+        // لو فشل عادي، بس للبادجات
       }
 
       // 6) نحدّث الـ snapshot اللي يظهر تحت العنوان
@@ -125,12 +130,6 @@ class _ResetWeightSheetState extends State<ResetWeightSheet> {
     }
   }
 
-  String _fmtTime(DateTime t) {
-    final l = t.toLocal();
-    return '${l.year}-${l.month.toString().padLeft(2, '0')}-${l.day.toString().padLeft(2, '0')} '
-        '${l.hour.toString().padLeft(2, '0')}:${l.minute.toString().padLeft(2, '0')}';
-  }
-
   @override
   Widget build(BuildContext context) {
     final currentHint = _currentG == null
@@ -138,23 +137,15 @@ class _ResetWeightSheetState extends State<ResetWeightSheet> {
         : '${_currentG!.toStringAsFixed(1)} g'
             '${_updatedAt == null ? '' : ' • ${_fmtTime(_updatedAt!)}'}';
 
-    final isPortrait =
-        MediaQuery.of(context).orientation == Orientation.portrait;
-
     return LayoutBuilder(
       builder: (context, constraints) {
         final maxH = constraints.maxHeight;
+        final bool short = maxH < 560;
 
-        // Responsive illustration sizing (safe for short heights)
-        final illusSize = (maxH * 0.28).clamp(140.0, 200.0).toDouble();
-        final illusImg = (illusSize * 0.88).toDouble();
-
-        final topHandleBottom = (AppSizes.xxl).clamp(16.0, 28.0);
-        final belowIllustration = (AppSizes.lg).clamp(12.0, 24.0);
-        final blockGap = (AppSizes.xxl).clamp(16.0, 28.0);
-        final bottomSafeGap = isPortrait ? AppSizes.lg : AppSizes.sm;
-
-        final needsScroll = maxH < 560;
+        // نفس منطق SetExpectedWeightSheet
+        final illusSize = (maxH * 0.22).clamp(140.0, 150.0).toDouble();
+        final illusImg = illusSize * 0.82;
+        final handleGap = (AppSizes.xl).clamp(16.0, 26.0);
 
         final content = Column(
           mainAxisSize: MainAxisSize.min,
@@ -163,26 +154,28 @@ class _ResetWeightSheetState extends State<ResetWeightSheet> {
             Container(
               width: 44,
               height: 5,
-              margin: EdgeInsets.only(bottom: topHandleBottom),
+              margin: EdgeInsets.only(bottom: handleGap),
               decoration: BoxDecoration(
                 color: Colors.white24,
                 borderRadius: BorderRadius.circular(99),
               ),
             ),
 
-            // ─ Illustration (PNG inside a soft glowing circle)
+            // ─ Illustration (circle with PNG)
             Container(
               height: illusSize,
               width: illusSize,
-              margin: EdgeInsets.only(bottom: belowIllustration),
+              margin: const EdgeInsets.only(bottom: AppSizes.lg),
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.04),
                 shape: BoxShape.circle,
-                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.08),
+                ),
                 boxShadow: [
                   BoxShadow(
                     color: AppColors.primaryBlue.withValues(alpha: 0.22),
-                    blurRadius: 30,
+                    blurRadius: 26,
                     spreadRadius: 3,
                   ),
                 ],
@@ -210,13 +203,14 @@ class _ResetWeightSheetState extends State<ResetWeightSheet> {
               "Avoid moving it for best accuracy.",
               textAlign: TextAlign.center,
               style: AppTextStyles.secondary.copyWith(
-                fontSize: AppSizes.fontMd,
+                fontSize: AppSizes.fontSm,
+                height: 1.4,
               ),
             ),
 
             // ─ Small hint with current snapshot
             if (currentHint != null) ...[
-              SizedBox(height: blockGap),
+              const SizedBox(height: AppSizes.md),
               Text(
                 'Current • $currentHint',
                 textAlign: TextAlign.center,
@@ -227,7 +221,7 @@ class _ResetWeightSheetState extends State<ResetWeightSheet> {
               ),
             ],
 
-            SizedBox(height: blockGap),
+            const SizedBox(height: AppSizes.lg),
 
             // ─ Actions
             Row(
@@ -256,8 +250,7 @@ class _ResetWeightSheetState extends State<ResetWeightSheet> {
               ],
             ),
 
-            // Extra bottom gap so buttons don't stick to the edge
-            SizedBox(height: bottomSafeGap),
+            const SizedBox(height: AppSizes.lg),
           ],
         );
 
@@ -273,11 +266,9 @@ class _ResetWeightSheetState extends State<ResetWeightSheet> {
           child: SafeArea(
             top: false,
             child: ConstrainedBox(
-              constraints: BoxConstraints(
-                // keep a little headroom so content never overflows
-                maxHeight: maxH * 0.92,
-              ),
-              child: needsScroll
+              constraints:
+                  BoxConstraints(maxHeight: maxH * (short ? 0.96 : 0.9)),
+              child: short
                   ? SingleChildScrollView(
                       physics: const BouncingScrollPhysics(),
                       child: content,

@@ -8,8 +8,6 @@ import 'package:progear_smart_bag/features/auth/presentation/pages/register_page
 import 'package:progear_smart_bag/features/home/presentation/pages/home_dashboard_page.dart';
 import 'package:progear_smart_bag/features/auth/presentation/pages/auth_gate.dart';
 import 'package:progear_smart_bag/features/activity/presentation/pages/activity_page.dart';
-
-// ✅ جديد: صفحة السيتنق
 import 'package:progear_smart_bag/features/home/presentation/pages/settings_page.dart';
 
 final appRouter = GoRouter(
@@ -33,7 +31,6 @@ final appRouter = GoRouter(
       builder: (c, s) => const SettingsPage(),
     ),
 
-    // Activity
     GoRoute(
       path: '/activity',
       builder: (c, s) {

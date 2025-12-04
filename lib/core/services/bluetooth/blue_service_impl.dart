@@ -12,7 +12,6 @@ import 'package:progear_smart_bag/core/debug/debug_flags.dart';
 class BlueServiceImpl implements BlueService {
   final Logger _log = logger(BlueServiceImpl);
 
-  // ✅ UUIDs حق خدمة الـ UART في الهاردوير
   static final Guid _svcUart =
       Guid('6E400001-B5A3-F393-E0A9-E50E24DCCA9E'); // SERVICE
   static final Guid _txUart =
@@ -70,11 +69,9 @@ class BlueServiceImpl implements BlueService {
         },
       );
 
-      // نتأكد إنه فعلاً صار متصل
       await device.connectionState
           .firstWhere((s) => s == BluetoothConnectionState.connected);
 
-      // نطلب MTU أكبر عشان الرسالة ما تنقص
       try {
         final mtu = await device.requestMtu(185);
         DebugFlags.logBle('MTU negotiated: $mtu');
@@ -158,7 +155,6 @@ class BlueServiceImpl implements BlueService {
     }
 
     DebugFlags.logBle('✅ Using TX characteristic: ${txChar.uuid}');
-    // ماندع setNotify هنا، نخليه في BagParser.bind
     return txChar;
   }
 }

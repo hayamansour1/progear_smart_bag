@@ -27,7 +27,6 @@ class AuthService {
     }
   }
 
-  /// ✅ Sign up + save user name in metadata as `name`
   Future<AuthResponse> signUpWithEmailPassword(
     String email,
     String password,
@@ -38,7 +37,7 @@ class AuthService {
         email: email,
         password: password,
         data: {
-          'name': name, // نخزن الاسم هنا
+          'name': name,
         },
       );
     } on AuthException catch (e) {
@@ -84,7 +83,7 @@ class AuthService {
     }
   }
 
-  /// alias
+  // alias
   Future<void> sendPasswordReset(String email) => sendRecoveryCode(email);
 
   Future<void> verifyRecoveryCodeAndUpdatePassword({

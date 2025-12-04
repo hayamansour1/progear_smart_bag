@@ -6,12 +6,11 @@ class ActivitySeenStore {
 
   SharedPreferences? _prefs;
 
-  /// Call once on app startup (e.g., in `main.dart`) — optional but recommended.
+  /// Call once on app startup 
   Future<void> init() async {
     _prefs ??= await SharedPreferences.getInstance();
   }
 
-  /// Lazy getter so methods still work even if `init()` wasn’t called.
   Future<SharedPreferences> _sp() async {
     _prefs ??= await SharedPreferences.getInstance();
     return _prefs!;
