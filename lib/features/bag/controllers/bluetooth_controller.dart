@@ -52,14 +52,13 @@ class BluetoothController extends ChangeNotifier {
   void _init() {
     DebugFlags.logBle('BluetoothController._init()');
 
-    // تابع حالة البلوتوث (On/Off)
+    //  On/Off
     _stateSubscription = FlutterBluePlus.adapterState.listen((state) {
       _adapterState = state;
       DebugFlags.logBle('Adapter state changed: $state');
       notifyListeners();
     });
 
-    // تابع نتائج الاسكان
     _scanSubscription = _blueServiceImpl.scanResults.listen((results) {
       _devices = results;
       DebugFlags.logBle('scanResults updated: ${results.length} devices found');
@@ -77,7 +76,6 @@ class BluetoothController extends ChangeNotifier {
 
       await _blueServiceImpl.startScan();
 
-      // إيقاف تلقائي بعد دقيقة
       Future.delayed(const Duration(minutes: 1), () async {
         if (_isScanning) {
           DebugFlags.logBle('Auto stop scan after 1 minute');
@@ -120,7 +118,6 @@ class BluetoothController extends ChangeNotifier {
       DebugFlags.logBle('connectDevice -> $id');
       _setDeviceLoading(id, true);
 
-      // افصل أي جهاز آخر متصل
       for (var result in _devices) {
         if (result.device.isConnected &&
             result.device.remoteId != device.remoteId) {
@@ -133,7 +130,6 @@ class BluetoothController extends ChangeNotifier {
       // connect
       await _blueServiceImpl.connect(device);
 
-      // ننتظر لين يصير متصل فعلياً
       await device.connectionState
           .firstWhere((s) => s == BluetoothConnectionState.connected)
           .timeout(
@@ -158,7 +154,6 @@ class BluetoothController extends ChangeNotifier {
 
       final cid = device.remoteId.str;
 
-      // تأكد من وجود الكنترولر في Supabase
       try {
         _log.t('Calling ensure_controller for $cid');
         await sb.rpc('ensure_controller', params: {
@@ -198,7 +193,6 @@ class BluetoothController extends ChangeNotifier {
     }
   }
 
-  /// ترجع الـ characteristic اللي نستخدمها للـ notify (TX)
   Future<BluetoothCharacteristic?> getNotifyCharacteristic() async {
     if (_connectedDevice == null) {
       _log.w('getNotifyCharacteristic: no connected device');

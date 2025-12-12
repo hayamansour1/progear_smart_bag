@@ -35,15 +35,16 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
   void initState() {
     super.initState();
 
-    // بعد ما تبني الصفحة:
-    // 1) نشيك إذا اليوزر عنده controller مسجل في DB أو لا
-    // 2) لو ماعنده → نطلع ConnectBagSheet (مع الـ instructions)
-    // 3) لو عنده → نستخدم منطقك القديم (تنبيه الاتصال + load snapshot)
+    // After the page is built:
+    // 1) Check if the user has a controller registered in the DB or not
+    // 2) If they don't have one ? show ConnectBagSheet (with instructions)
+    // 3) If they have one ? use your old logic (connection alert + load snapshot)
+
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final sb = Supabase.instance.client;
       final uid = sb.auth.currentUser?.id;
 
-      // حالة نادرة: ما فيه يوزر
+      // Rare case: no user logged in
       if (uid == null) {
         if (!mounted) return;
         _showAlertIfNoBluetoothConnected();
@@ -51,7 +52,8 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
         return;
       }
 
-      // هل عنده شنطة مسبقًا في esp32_controller؟
+      // Check if the user already has a bag registered in esp32_controller
+
       final row = await sb
           .from('esp32_controller')
           .select('controllerID')
@@ -64,7 +66,6 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
       final hasController = cid != null;
 
       if (!hasController) {
-        // 🔹 New user → نطلع شيت "Let’s get your bag connected"
         await showModalBottomSheet(
           context: context,
           useSafeArea: true,
@@ -73,18 +74,14 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
           builder: (_) => const ConnectBagSheet(),
         );
 
-        // بعد ما يقفل الشيت، نحاول نحمّل snapshot (لو صار فيه controller)
         await _loadLastSnapshotIfNeeded();
       } else {
-        // 🔹 Existing user → منطق التنبيه القديم
         _showAlertIfNoBluetoothConnected();
         await _loadLastSnapshotIfNeeded();
       }
     });
   }
 
-  /// منطق التنبيه اللي كان عندك سابقًا:
-  /// إذا مافي شنطة متصلة نطلع AlertBagConnection
   void _showAlertIfNoBluetoothConnected() {
     final bt = context.read<BluetoothController>();
 
@@ -96,10 +93,10 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
     }
   }
 
-  /// تحميل آخر Snapshot (expected + current weight) من الـ DB
-  /// عشان:
-  /// - لو ما فيه بلوتوث: نعرض آخر وزن محفوظ
-  /// - لو فيه بلوتوث: برضو نبدأ من قيمة منطقية
+  /// Load the last snapshot (expected + current weight) from the DB
+  /// Because:
+  /// - If there's no Bluetooth: display the last saved weight
+  /// - If there's Bluetooth: still start from a logical value
   Future<void> _loadLastSnapshotIfNeeded() async {
     if (_snapshotLoaded) return;
 
@@ -108,7 +105,6 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
       final uid = sb.auth.currentUser?.id;
       if (uid == null) return;
 
-      // حالياً نفترض لكل يوزر شنطة واحدة
       final row = await sb
           .from('esp32_controller')
           .select('controllerID')
@@ -124,7 +120,6 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
       await weightCtrl.loadSnapshotFromDb(cid);
       _snapshotLoaded = true;
     } catch (_) {
-      // فشل بسيط، نخلي الـ UI يكمل عادي
     }
   }
 
@@ -132,7 +127,6 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
     final bt = context.read<BluetoothController>();
     final cid = bt.connectedDevice?.remoteId.str;
 
-    // لو ما فيه شنطة متصلة نطلع تنبيه الاتصال بدل الشيت
     if (cid == null) {
       await showDialog(
         context: context,
@@ -190,9 +184,10 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
               const BagStatusCard(),
               const SizedBox(height: AppSizes.lg),
 
-              // الوزن الحالي + المتوقع:
-              // - لو فيه بلوتوث: live من الـ BLE
-              // - لو مافيه بلوتوث: آخر Snapshot من الـ DB
+                // Current + Expected weight:
+                // - If Bluetooth connected: live from BLE
+                // - If no Bluetooth: last snapshot from DB
+
               WeightCard(
                 currentG: weightCtrl.currentG,
                 expectedG: weightCtrl.expectedG,

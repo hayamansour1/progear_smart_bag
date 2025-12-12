@@ -5,7 +5,7 @@ import 'battery_controller.dart';
 import 'package:progear_smart_bag/features/activity/data/last_controller_store.dart';
 
 class BatteryBridge {
-  /// يربط البطارية مع الـ BLE
+  /// Connects the battery to BLE
   static Future<void> bind(
     BatteryController ctrl,
     BluetoothCharacteristic ch, {
@@ -13,14 +13,14 @@ class BatteryBridge {
   }) async {
     ctrl.setControllerID(controllerID);
 
-    // 👇 نعتمد على قراءات BLE مباشرة، بدون boot من الـ DB هنا
+    // We rely on BLE readings directly, without booting from the DB here
     await ctrl.bindToCharacteristic(ch);
 
-    // نحدّث آخر controllerID محلياً (للأوفلاين لو احتجناه)
+    // Update the last controllerID locally (for offline use if needed)
     await LastControllerStore.instance.setLastControllerID(controllerID);
   }
 
-  /// boot من آخر شنطة محفوظة (بدون BLE) — للأوفلاين فقط
+  /// Boot from the last saved bag (without BLE) — for offline use only
   static Future<void> bootFromLastController(BatteryController ctrl) async {
     final lastId = await LastControllerStore.instance.getLastControllerID();
     if (lastId == null || lastId.isEmpty) return;
@@ -28,7 +28,7 @@ class BatteryBridge {
     await ctrl.boot();
   }
 
-  /// فك الربط عن الـ BLE (نخلي آخر قراءة موجودة للأوفلاين)
+  /// Unbind from BLE (keep the last reading for offline use)
   static Future<void> unbind(BatteryController ctrl) async {
     await ctrl.unbind();
   }

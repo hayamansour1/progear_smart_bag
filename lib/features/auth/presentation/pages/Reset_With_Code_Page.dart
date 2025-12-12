@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:progear_smart_bag/core/constants/app_images.dart';
 
 import 'package:progear_smart_bag/core/constants/app_sizes.dart';
 import 'package:progear_smart_bag/core/constants/app_text_styles.dart';
@@ -78,101 +79,133 @@ class _ResetWithCodePageState extends State<ResetWithCodePage> {
 
   @override
   Widget build(BuildContext context) {
-    final content = SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.all(AppSizes.lg),
-        children: [
-          const SizedBox(height: AppSizes.xl),
-          const Text('Reset password (OTP)', style: AppTextStyles.heading),
-          const SizedBox(height: AppSizes.sm),
-          Text(
-            'Enter the email that received the code, paste the code, '
-            'and set a new password.',
-            style: AppTextStyles.secondary,
-          ),
-          const SizedBox(height: AppSizes.xl),
-
-          Form(
-            key: _formKey,
-            child: AutofillGroup(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    return Scaffold(
+      body: ProGearBackground(
+        child: SafeArea(
+          child: Stack(
+            children: [
+              ListView(
+                padding: const EdgeInsets.all(AppSizes.lg),
                 children: [
-                  // Email
-                  ProGearTextField(
-                    controller: _email,
-                    label: 'Email',
-                    hintText: 'you@example.com',
-                    keyboardType: TextInputType.emailAddress,
-                    validator: AppValidators.email,
-                    textInputAction: TextInputAction.next,
-                    onSubmitted: (_) =>
-                        FocusScope.of(context).nextFocus(), // code field
-                  ),
-                  const SizedBox(height: AppSizes.lg),
-
-                  // Recovery code
-                  ProGearTextField(
-                    controller: _code,
-                    label: 'Recovery code',
-                    hintText: 'Paste the code from your email',
-                    validator: (v) {
-                      final val = (v ?? '').trim();
-                      if (val.isEmpty) return 'Please enter the code.';
-                      if (val.length < 4) return 'Code seems too short.';
-                      return null;
-                    },
-                    textInputAction: TextInputAction.next,
-                    onSubmitted: (_) =>
-                        FocusScope.of(context).nextFocus(), // password field
-                  ),
-                  const SizedBox(height: AppSizes.lg),
-
-                  // New password
-                  ProGearPasswordField(
-                    controller: _password,
-                    label: 'New password',
-                    textInputAction: TextInputAction.next,
-                    onSubmitted: (_) =>
-                        FocusScope.of(context).nextFocus(), // confirm field
-                    validator: (v) => AppValidators.password(v, minLen: 6),
-                    showStrength: true,
-                  ),
-                  const SizedBox(height: AppSizes.lg),
-
-                  // Confirm new password
-                  ProGearPasswordField(
-                    controller: _confirm,
-                    label: 'Confirm new password',
-                    textInputAction: TextInputAction.done,
-                    onSubmitted: (_) => _busy ? null : _submit(),
-                    validator: (v) {
-                      final base = AppValidators.password(v, minLen: 6);
-                      if (base != null) return base;
-                      if (v != _password.text) {
-                        return 'Passwords do not match.';
-                      }
-                      return null;
-                    },
-                  ),
                   const SizedBox(height: AppSizes.xl),
+                  const Text(
+                    'Reset password (OTP)',
+                    style: AppTextStyles.heading1,
+                  ),
+                  const SizedBox(height: AppSizes.sm),
+                  Text(
+                    'Enter the email that received the code, paste the code, '
+                    'and set a new password.',
+                    style: AppTextStyles.bodySM,
+                  ),
+                  const SizedBox(height: AppSizes.sm),
+                  Form(
+                    key: _formKey,
+                    child: AutofillGroup(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Email
+                          ProGearTextField(
+                            controller: _email,
+                            label: 'Email',
+                            hintText: 'you@example.com',
+                            keyboardType: TextInputType.emailAddress,
+                            validator: AppValidators.email,
+                            textInputAction: TextInputAction.next,
+                            onSubmitted: (_) =>
+                                FocusScope.of(context).nextFocus(),
+                          ),
+                          const SizedBox(height: AppSizes.md),
 
-                  ProGearButton.primary(
-                    label: _busy ? 'Updating…' : 'Update password',
-                    onPressed: _busy ? null : _submit,
-                    expanded: true,
-                    size: ProGearButtonSize.xl,
+                          // Recovery code
+                          ProGearTextField(
+                            controller: _code,
+                            label: 'Recovery code',
+                            hintText: 'Paste the code from your email',
+                            validator: (v) {
+                              final val = (v ?? '').trim();
+                              if (val.isEmpty) return 'Please enter the code.';
+                              if (val.length < 4) {
+                                return 'Code seems too short.';
+                              }
+                              return null;
+                            },
+                            textInputAction: TextInputAction.next,
+                            onSubmitted: (_) =>
+                                FocusScope.of(context).nextFocus(),
+                          ),
+                          const SizedBox(height: AppSizes.md),
+
+                          // New password
+                          ProGearPasswordField(
+                            controller: _password,
+                            label: 'New password',
+                            textInputAction: TextInputAction.next,
+                            onSubmitted: (_) =>
+                                FocusScope.of(context).nextFocus(),
+                            validator: (v) =>
+                                AppValidators.password(v, minLen: 6),
+                            showStrength: true,
+                          ),
+                          const SizedBox(height: AppSizes.md),
+
+                          // Confirm new password
+                          ProGearPasswordField(
+                            controller: _confirm,
+                            label: 'Confirm new password',
+                            textInputAction: TextInputAction.done,
+                            onSubmitted: (_) => _busy ? null : _submit(),
+                            validator: (v) {
+                              final base = AppValidators.password(v, minLen: 6);
+                              if (base != null) return base;
+                              if (v != _password.text) {
+                                return 'Passwords do not match.';
+                              }
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: AppSizes.xl),
+
+                          ProGearButton.primary(
+                            label: _busy ? 'Updating…' : 'Update password',
+                            onPressed: _busy ? null : _submit,
+                            expanded: true,
+                            size: ProGearButtonSize.xl,
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),
-            ),
-          ),
-        ],
-      ),
-    );
 
-    return Scaffold(
-      body: ProGearBackground(child: content),
+
+              Positioned(
+                top: AppSizes.md,
+                left: AppSizes.xs,
+                child: IconButton(
+                  onPressed: () => context.go('/login'),
+                  icon: const Icon(Icons.arrow_back),
+                ),
+              ),
+
+
+              Positioned(
+                top: AppSizes.lg,
+                right: AppSizes.md,
+                child: Opacity(
+                  opacity: .9,
+                  child: Image.asset(
+                    AppImages.logoBag,
+                    height: 28,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

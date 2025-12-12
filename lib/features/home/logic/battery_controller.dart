@@ -30,7 +30,7 @@ class BatteryController extends ChangeNotifier {
   })  : _repo = repository,
         _controllerID = controllerID;
 
-  // نبدأ بـ -1 عشان أول قراءة دايمًا تعتبر "تغيير"
+  // Start with -1 so the first reading is always considered a "change"
   int _percent = -1;
   bool _isCharging = false;
   DateTime? _lastUpdated;
@@ -130,34 +130,77 @@ class BatteryController extends ChangeNotifier {
     final t = line.trim();
     if (t.isEmpty) return;
 
-    // نفصل TAG:payload لو كانت BATTERY:...
     String payload = t;
+    String? tag; // BATTERY / WEIGHT_DATA / ...
+
+    // If the message is in the form of TAG:payload
     final idx = t.indexOf(':');
-    if (idx > 0 &&
-        (t.startsWith('BATTERY') ||
-            t.startsWith('BAT:') ||
-            t.startsWith('BATT:'))) {
+    if (idx > 0) {
+      tag = t.substring(0, idx).trim().toUpperCase();
       payload = t.substring(idx + 1).trim();
     }
 
     int? p;
     bool? chg;
 
-    // أولاً نحاول JSON: {"percent":80,"chg":1}
+    // -------------------------------------------------
+    // 1) Try to parse JSON in either of the two formats:
+    //    A) BATTERY:{"percent":80,"chg":1}
+    //    B) {"type":"BATTERY","data":{"percent":80,"chg":1}}
+    // -------------------------------------------------
     if (payload.startsWith('{') && payload.endsWith('}')) {
       try {
-        final m = jsonDecode(payload) as Map<String, dynamic>;
+        final root = jsonDecode(payload) as Map<String, dynamic>;
+
+        Map<String, dynamic> jsonMap = root;
+
+        // If the message is in the form of an envelope: {"type":"BATTERY","data":{...}}
+        if (root.containsKey('type') && root.containsKey('data')) {
+          final type = root['type']?.toString().toUpperCase() ?? '';
+          if (type.startsWith('BAT')) {
+            final data = root['data'];
+            if (data is Map<String, dynamic>) {
+              jsonMap = data;
+              DebugFlags.logBattery(
+                  'Battery envelope detected -> type=$type, data=$jsonMap');
+            } else {
+                // Not a Map? Let it fall through the filter below
+              DebugFlags.logBattery('Battery envelope data is not a Map');
+            }
+          } else {
+            // Not a battery type in the envelope ? ignore
+            DebugFlags.logBattery(
+                'JSON envelope type=$type (not battery) -> ignore');
+            return;
+          }
+        } else {
+            // Not an envelope, if we have a TAG and it's not BATTERY → it might be WEIGHT_DATA → ignore it
+          if (tag != null &&
+              !(tag.startsWith('BATTERY') ||
+                  tag.startsWith('BAT') ||
+                  tag.startsWith('BATT'))) {
+            DebugFlags.logBattery('Tag=$tag not battery -> ignore line');
+            return;
+          }
+        }
+
         p = _readInt(
-          m['percent'] ?? m['pct'] ?? m['bat'] ?? m['battery'],
+          jsonMap['percent'] ??
+              jsonMap['pct'] ??
+              jsonMap['bat'] ??
+              jsonMap['battery'],
         );
-        chg = _readBool(m['chg'] ?? m['charging']);
+        chg = _readBool(jsonMap['chg'] ?? jsonMap['charging']);
+
         DebugFlags.logBattery('Battery JSON parsed: p=$p, chg=$chg');
       } catch (e) {
         DebugFlags.logBattery('BatteryController JSON parse error: $e');
       }
     }
 
-    // fallback لصيغ نصية ثانية لو احتجناها مستقبلاً
+    // -------------------------------------------------
+    // 2) Fallback for other text formats (if needed)
+    // -------------------------------------------------
     p ??= _extractInt(
       payload,
       RegExp(r'(?:BAT|BATT|BATTERY)\s*[:=]\s*(\d{1,3})'),
@@ -170,7 +213,7 @@ class BatteryController extends ChangeNotifier {
       ),
     );
 
-    // لو مو رسالة بطارية (زي WEIGHT_DATA) طنّشيها
+    // If it's not a battery message (like WEIGHT_DATA), ignore it
     if (p == null && chg == null) {
       return;
     }
@@ -182,14 +225,13 @@ class BatteryController extends ChangeNotifier {
   }
 
   int? _readInt(dynamic v) => v == null ? null : int.tryParse(v.toString());
+
   bool? _readBool(dynamic v) {
     if (v == null) return null;
     final s = v.toString().toLowerCase();
-    return (s == '1' || s == 'true')
-        ? true
-        : (s == '0' || s == 'false')
-            ? false
-            : null;
+    if (s == '1' || s == 'true') return true;
+    if (s == '0' || s == 'false') return false;
+    return null;
   }
 
   int? _extractInt(String src, RegExp re) {
@@ -232,7 +274,7 @@ class BatteryController extends ChangeNotifier {
     }
   }
 
-  /// نستخدمها وقت الـ Logout عشان ما تنتقل نسبة البطارية لحساب جديد
+  // Used during logout to reset the battery percentage for a new account
   void resetState() {
     _percent = -1;
     _isCharging = false;

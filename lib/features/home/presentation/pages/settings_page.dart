@@ -13,13 +13,12 @@ import 'package:progear_smart_bag/features/weight/logic/weight_bridge.dart';
 import 'package:progear_smart_bag/features/home/logic/battery_bridge.dart';
 import 'package:progear_smart_bag/features/weight/logic/weight_controller.dart';
 import 'package:progear_smart_bag/features/home/logic/battery_controller.dart';
+import 'package:progear_smart_bag/core/theme/progear_background.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
 
-  // ---------------------------------------------------------------------------
-  // حذف الشنطة
-  // ---------------------------------------------------------------------------
+//Delete Bag Function  
   Future<void> _removeCurrentBag(BuildContext context) async {
     final bt = context.read<BluetoothController>();
     final weightCtrl = context.read<WeightController>();
@@ -27,7 +26,7 @@ class SettingsPage extends StatelessWidget {
     final sb = Supabase.instance.client;
 
     //
-    // 1) نحدد controllerID
+    // 1)  controllerID
     //
     final liveId = bt.connectedDevice?.remoteId.str;
     final lastId = await LastControllerStore.instance.getLastControllerID();
@@ -43,9 +42,8 @@ class SettingsPage extends StatelessWidget {
       return;
     }
 
-    //
-    // 2) نطلب تأكيد
-    //
+  
+    // 2) Confirmation Dialog
     final confirmed = await showDialog<bool>(
           // ignore: use_build_context_synchronously
           context: context,
@@ -82,34 +80,27 @@ class SettingsPage extends StatelessWidget {
     if (!context.mounted) return;
 
     try {
-      //
-      // 3) حذف الشنطة من Supabase
-      //
+
+      // 3) Delete Bag from Supabase
       await sb.rpc('remove_controller', params: {'p_controller': cid});
 
-      //
-      // 4) فصل BLE لو متصل
-      //
+
+      // 4) Disconnect if connected
       if (bt.connectedDevice != null &&
           bt.connectedDevice!.remoteId.str == cid) {
         await bt.disconnectDevice(bt.connectedDevice!);
       }
 
-      //
-      // 5) فصل جميع الـ Streams الخاصة بالوزن والبطارية
-      //
+      // 5) Cleanup bindings
       await WeightBridge.unbind(weightCtrl);
       await BatteryBridge.unbind(batteryCtrl);
 
-      //
-      // 6) إعادة تهيئة الكنترولرات
-      //
+
+      // 6) Reset Controllers' State
       weightCtrl.resetForNewOwner();
       batteryCtrl.resetState();
 
-      //
-      // 7) حذف آخر ControllerID مخزّن محليًا
-      //
+      // 7) Clear last controller ID
       await LastControllerStore.instance.clear();
 
       if (!context.mounted) return;
@@ -132,13 +123,13 @@ class SettingsPage extends StatelessWidget {
     }
   }
 
-  // ---------------------------------------------------------------------------
+
   // UI
-  // ---------------------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -152,57 +143,55 @@ class SettingsPage extends StatelessWidget {
         ),
         centerTitle: true,
       ),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(AppSizes.md),
-          children: [
-            //
-            // العنوان
-            //
-            Text(
-              'Bag Settings',
-              style: AppTextStyles.heading2.copyWith(
-                fontSize: 18,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: AppSizes.md),
+      body: ProGearBackground(
+        child: SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.all(AppSizes.md),
+            children: [
 
-            //
-            // زر حذف الشنطة
-            //
-            Card(
-              color: Colors.white.withValues(alpha: .06),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+              Text(
+                'Bag Settings',
+                style: AppTextStyles.heading2.copyWith(
+                  fontSize: 18,
+                  color: Colors.white,
+                ),
               ),
-              child: ListTile(
-                leading: const Icon(Icons.delete_outline, color: Colors.red),
-                title: const Text(
-                  'Remove bag from this account',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
+              const SizedBox(height: AppSizes.md),
+
+              //Delete Bag
+              Card(
+                color: Colors.white.withValues(alpha: .06),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: ListTile(
+                  leading: const Icon(Icons.delete_outline, color: Colors.red),
+                  title: const Text(
+                    'Remove bag from this account',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
                   ),
+                  subtitle: const Text(
+                    'Unpair the bag and delete its weight & notification history.\n'
+                    'After that, another user can pair it as a new bag.',
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                  onTap: () => _removeCurrentBag(context),
                 ),
-                subtitle: const Text(
-                  'Unpair the bag and delete its weight & notification history.\n'
-                  'After that, another user can pair it as a new bag.',
-                  style: TextStyle(color: Colors.white70),
+              ),
+
+              const SizedBox(height: AppSizes.lg),
+
+              Text(
+                'More settings coming soon…',
+                style: AppTextStyles.secondary.copyWith(
+                  color: Colors.white54,
                 ),
-                onTap: () => _removeCurrentBag(context),
               ),
-            ),
-
-            const SizedBox(height: AppSizes.lg),
-
-            Text(
-              'More settings coming soon…',
-              style: AppTextStyles.secondary.copyWith(
-                color: Colors.white54,
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

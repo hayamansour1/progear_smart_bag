@@ -43,7 +43,7 @@ class ConnectBagSheet extends StatelessWidget {
               ),
             ),
 
-            // illustration (شنطة)
+            // illustration
             Container(
               height: isPortrait ? 120 : 120,
               width: isPortrait ? 120 : 120,
@@ -139,7 +139,6 @@ class ConnectBagSheet extends StatelessWidget {
                   child: ProGearButton.primary(
                     label: 'Connect now',
                     onPressed: () {
-                      // نقفل هذا الشيت، وبعدين نفتح شيت البلوتوث مع parentContext = context
                       Navigator.pop(context);
                       showModalBottomSheet(
                         context: context,

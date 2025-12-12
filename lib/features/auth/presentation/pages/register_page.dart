@@ -42,7 +42,7 @@ class _RegisterPageState extends State<RegisterPage> {
       await _auth.signUpWithEmailPassword(
         _email.text.trim(),
         _password.text,
-        _name.text.trim(), // ✅ نمرر الاسم هنا
+        _name.text.trim(),
       );
 
       if (!mounted) return;
@@ -89,10 +89,10 @@ class _RegisterPageState extends State<RegisterPage> {
                   const SizedBox(height: AppSizes.xxl),
                   const Text("Create your account",
                       style: AppTextStyles.heading3),
-                  const SizedBox(height: AppSizes.sm),
+                  const SizedBox(height: AppSizes.xs),
                   Text("Join ProGear to get started.",
                       style: AppTextStyles.secondary),
-                  const SizedBox(height: AppSizes.xl),
+                  const SizedBox(height: AppSizes.md),
                   AutofillGroup(
                     child: Form(
                       key: _formKey,
@@ -116,7 +116,7 @@ class _RegisterPageState extends State<RegisterPage> {
                             },
                           ),
 
-                          const SizedBox(height: AppSizes.lg),
+                          const SizedBox(height: AppSizes.md),
 
                           // EMAIL
                           ProGearTextField(
@@ -130,7 +130,7 @@ class _RegisterPageState extends State<RegisterPage> {
                             validator: AppValidators.email,
                           ),
 
-                          const SizedBox(height: AppSizes.lg),
+                          const SizedBox(height: AppSizes.md),
 
                           // PASSWORD
                           ProGearPasswordField(
@@ -142,7 +142,7 @@ class _RegisterPageState extends State<RegisterPage> {
                                 AppValidators.password(v, minLen: 6),
                           ),
 
-                          const SizedBox(height: AppSizes.lg),
+                          const SizedBox(height: AppSizes.md),
 
                           // CONFIRM PASSWORD
                           ProGearPasswordField(

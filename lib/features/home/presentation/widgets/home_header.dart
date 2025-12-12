@@ -43,7 +43,6 @@ class _HomeHeaderState extends State<HomeHeader> {
     final ctrl = _btCtrl;
     if (ctrl == null) return;
 
-    // 1) لو فيه جهاز متصل نستخدمه
     final liveId = ctrl.connectedDevice?.remoteId.str;
     if (liveId != null && liveId.isNotEmpty) {
       final unread = await ActivitySeenStore.instance.hasUnread(liveId);
@@ -55,7 +54,6 @@ class _HomeHeaderState extends State<HomeHeader> {
       return;
     }
 
-    // 2) لو فيه آخر ID مخزّن محليًا نستخدمه
     final lastId = await LastControllerStore.instance.getLastControllerID();
     if (lastId != null && lastId.isNotEmpty) {
       final unread = await ActivitySeenStore.instance.hasUnread(lastId);
@@ -67,7 +65,6 @@ class _HomeHeaderState extends State<HomeHeader> {
       return;
     }
 
-    // 3) أخيرًا: نسأل الـ DB عن أي شنطة مربوطة بهالحساب
     final sb = Supabase.instance.client;
     final user = sb.auth.currentUser;
     if (user == null) return;
@@ -90,7 +87,6 @@ class _HomeHeaderState extends State<HomeHeader> {
         _unread = unread;
       });
 
-      // نحفظها محلياً لمرات الجاية
       await LastControllerStore.instance.setLastControllerID(dbId);
     } catch (e) {
       debugPrint('HomeHeader _loadInitialControllerID DB error: $e');
@@ -104,7 +100,6 @@ class _HomeHeaderState extends State<HomeHeader> {
     final liveId = ctrl.connectedDevice?.remoteId.str;
 
     if ((liveId == null || liveId.isEmpty) && _controllerID != null) {
-      // نخلي آخر ID كما هو (عشان Activity) لو ما عندنا بديل
       return;
     }
 
@@ -147,7 +142,6 @@ class _HomeHeaderState extends State<HomeHeader> {
     }
   }
 
-  /// 🔌 Logout نظيف
   Future<void> _handleLogout() async {
     try {
       final bt = context.read<BluetoothController>();
@@ -185,7 +179,6 @@ class _HomeHeaderState extends State<HomeHeader> {
 
   @override
   Widget build(BuildContext context) {
-    // rebuild احتياط لو البلوتوث تغيّر
     context.watch<BluetoothController>();
 
     final user = Supabase.instance.client.auth.currentUser;

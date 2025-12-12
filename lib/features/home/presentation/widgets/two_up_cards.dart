@@ -25,7 +25,6 @@ class TwoUpCards extends StatelessWidget {
               BagStatus status;
 
               if (expected <= 0) {
-                // أول مرة — ما فيه expected yet
                 status = BagStatus.ok;
               } else if (current < expected - 100) {
                 status = BagStatus.missing;

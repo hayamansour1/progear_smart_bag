@@ -13,7 +13,6 @@ import 'package:progear_smart_bag/features/activity/data/activity_seen_store.dar
 import 'package:progear_smart_bag/core/debug/debug_flags.dart';
 
 /// WeightController
-/// يستقبل قراءات الوزن من BLE، يحسب الفرق عن المتوقع،
 class WeightController extends ChangeNotifier {
   final Logger _log = logger(WeightController);
   final BagParser _parser;
@@ -36,7 +35,6 @@ class WeightController extends ChangeNotifier {
 
   StreamSubscription<String>? _sub;
 
-  /// استدعاء عندما تنتقل الشنطة لمستخدم جديد (نبي نرمي كل القديم)
   void resetForNewOwner() {
     _currentG = 0;
     _expectedG = 0;
@@ -45,13 +43,11 @@ class WeightController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// boot(): تحميل snapshot من الـ DB كبداية (حتى بدون BLE)
   Future<void> boot({required String controllerID}) async {
     _log.t('boot(): controllerID = $controllerID');
     await loadSnapshotFromDb(controllerID);
   }
 
-  /// تحميل آخر Snapshot من جدول esp32_controller
   Future<void> loadSnapshotFromDb(String controllerID) async {
     try {
       final sb = Supabase.instance.client;
@@ -87,7 +83,6 @@ class WeightController extends ChangeNotifier {
     }
   }
 
-  /// ربط BLE بالـ BagParser
   Future<void> bindToCharacteristic(
     BluetoothCharacteristic ch, {
     required String controllerID,
@@ -103,14 +98,12 @@ class WeightController extends ChangeNotifier {
     );
   }
 
-  /// فك الربط
   Future<void> unbind() async {
     await _sub?.cancel();
     _sub = null;
     await _parser.unbind();
   }
 
-  /// استدعاء بعد Set/Reset ناجح لتحديث المتوقع محليًا
   void applyExpectedFromReset(double expectedG) {
     _expectedG = expectedG;
     _deltaG = _currentG - _expectedG;
@@ -127,7 +120,6 @@ class WeightController extends ChangeNotifier {
 
     double? w;
 
-    // لو الرسالة على شكل TAG:payload نشيل TAG
     final colonIdx = t.indexOf(':');
     if (colonIdx != -1 && colonIdx < t.length - 1) {
       final payload = t.substring(colonIdx + 1).trim();
@@ -136,7 +128,7 @@ class WeightController extends ChangeNotifier {
       }
     }
 
-    // JSON: {"g":1234} أو {"weight":1234}
+    // JSON: {"g":1234} or {"weight":1234}
     if (t.startsWith('{') && t.endsWith('}')) {
       try {
         final m = jsonDecode(t) as Map<String, dynamic>;
@@ -147,7 +139,7 @@ class WeightController extends ChangeNotifier {
       }
     }
 
-    // Text fallback: W:1234 أو WEIGHT=1234
+    // Text fallback: W:1234 or WEIGHT=1234
     w ??= _extractDouble(
       t,
       RegExp(
@@ -184,8 +176,6 @@ class WeightController extends ChangeNotifier {
     _currentG = currentG;
 
     if (noBaseline) {
-      // ✅ أول مرة: ما عندنا baseline
-      // نخلي expected = 0 ونحدّث الـ UI فقط
       _deltaG = 0;
 
       _log.t(
@@ -194,7 +184,6 @@ class WeightController extends ChangeNotifier {
 
       notifyListeners();
 
-      // (اختياري) لو تبين تخزنين الريتنغ كـ history:
       try {
         await sb.rpc('insert_weight_reading', params: {
           'p_sensor': 'hx711',
@@ -205,11 +194,9 @@ class WeightController extends ChangeNotifier {
         _log.e('insert_weight_reading(noBaseline) failed: $e');
       }
 
-      // ⚠️ أهم شيء: ما نلمس esp32_controller هنا عشان RLS
       return;
     }
 
-    // ---- هنا عندنا baseline جاهز ----
     final prevDelta = _deltaG;
 
     _deltaG = _currentG - _expectedG;
@@ -219,9 +206,8 @@ class WeightController extends ChangeNotifier {
       'currentG=$_currentG, expected=$_expectedG, deltaG=$_deltaG',
     );
 
-    notifyListeners(); // تحديث الـ UI فوراً
+    notifyListeners();
 
-    // 1) تسجيل القراءة في الـ DB + تحديث currentWeight
     try {
       await sb.rpc('insert_weight_reading', params: {
         'p_sensor': 'hx711',
@@ -237,7 +223,6 @@ class WeightController extends ChangeNotifier {
       _log.e('insert_weight_reading / update currentWeight failed: $e');
     }
 
-    // 2) Notifications لو الفرق أكبر من العتبة مع cooldown
     final now = DateTime.now();
     final over = _deltaG >= _deltaThreshold;
     final under = _deltaG <= -_deltaThreshold;
@@ -246,7 +231,6 @@ class WeightController extends ChangeNotifier {
     if (!beyond) return;
     if (now.difference(_lastDeltaNotifyAt) < _notifyCooldown) return;
 
-    // لا نكرر تنبيه في نفس الاتجاه مباشرة
     if ((prevDelta >= _deltaThreshold && over) ||
         (prevDelta <= -_deltaThreshold && under)) {
       return;

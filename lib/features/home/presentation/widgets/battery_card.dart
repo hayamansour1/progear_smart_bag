@@ -27,8 +27,7 @@ class BatteryCard extends StatelessWidget {
     return _iosGreen;
   }
 
-  // --------- (Optional) format time function ----------
-  // تركناها هنا كومنت لو احتجتيها مستقبلًا
+  // --------- (Optional) format time function IF NEDED ----------
   /*
   String _fmtTime(DateTime t) {
     final l = t.toLocal();
@@ -85,7 +84,6 @@ class BatteryCard extends StatelessWidget {
             ),
           ),
 
-          // ❌ حذفنا عرض وقت آخر تحديث — تركناه كومنت فقط
           /*
           if (lastUpdated != null) ...[
             const SizedBox(height: 6),

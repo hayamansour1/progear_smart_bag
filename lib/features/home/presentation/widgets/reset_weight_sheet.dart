@@ -13,11 +13,9 @@ import 'package:progear_smart_bag/shared/widgets/progear_button.dart';
 import 'package:progear_smart_bag/features/weight/logic/weight_controller.dart';
 import 'package:progear_smart_bag/shared/widgets/progear_toast.dart';
 
-// Local unread store (header dot / badges)
 import 'package:progear_smart_bag/features/activity/data/activity_seen_store.dart';
 
 class ResetWeightSheet extends StatefulWidget {
-  /// مرري الـ controllerID حق الشنطة المتصلة حاليًا
   final String controllerID;
 
   const ResetWeightSheet({super.key, required this.controllerID});
@@ -31,7 +29,6 @@ class _ResetWeightSheetState extends State<ResetWeightSheet> {
 
   bool _loading = false;
 
-  // Snapshot من الـ DB فقط للـ hint "Current • ..."
   double? _currentG;
   DateTime? _updatedAt;
 
@@ -41,7 +38,6 @@ class _ResetWeightSheetState extends State<ResetWeightSheet> {
     _loadSnapshot();
   }
 
-  /// Lightweight snapshot for the tiny "Current • ..." hint.
   Future<void> _loadSnapshot() async {
     try {
       final row = await _sb
@@ -57,7 +53,6 @@ class _ResetWeightSheetState extends State<ResetWeightSheet> {
         _updatedAt = ts != null ? DateTime.tryParse(ts) : null;
       });
     } catch (_) {
-      // snapshot فشل بسيط، ما نوقف الشيت عشانه
     }
   }
 
@@ -74,17 +69,14 @@ class _ResetWeightSheetState extends State<ResetWeightSheet> {
   Future<void> _confirmReset() async {
     setState(() => _loading = true);
     try {
-      // 1) الوزن الحالي من الكنترولر (live BLE)
       final weightCtrl = context.read<WeightController>();
       final currentG = weightCtrl.currentG;
 
-      // 2) نحدّث expectedWeight = currentG في الداتابيس
       await _sb.rpc('set_expected_weight', params: {
         'p_controller': widget.controllerID,
         'p_value': currentG,
       });
 
-      // 3) نسجّل Notification للـ Activity
       final uid = _sb.auth.currentUser?.id;
       if (uid != null) {
         await _sb.rpc('insert_notification', params: {
@@ -101,20 +93,15 @@ class _ResetWeightSheetState extends State<ResetWeightSheet> {
         });
       }
 
-      // 4) نحدّث الـ WeightController محليًا عشان UI يتحدث فورًا
       weightCtrl.applyExpectedFromReset(currentG);
 
-      // 5) نعلّم الـ ActivitySeenStore إن فيه حدث جديد (للبادجات)
       try {
         await ActivitySeenStore.instance.bumpUnread(widget.controllerID);
       } catch (_) {
-        // لو فشل عادي، بس للبادجات
       }
 
-      // 6) نحدّث الـ snapshot اللي يظهر تحت العنوان
       await _loadSnapshot();
 
-      // 7) Haptics + toast feedback, ثم نقفل الشيت
       await HapticFeedback.lightImpact();
       ProGearToast.show(
         'Expected weight updated to ${currentG.toStringAsFixed(1)} g.',
@@ -142,7 +129,6 @@ class _ResetWeightSheetState extends State<ResetWeightSheet> {
         final maxH = constraints.maxHeight;
         final bool short = maxH < 560;
 
-        // نفس منطق SetExpectedWeightSheet
         final illusSize = (maxH * 0.22).clamp(140.0, 150.0).toDouble();
         final illusImg = illusSize * 0.82;
         final handleGap = (AppSizes.xl).clamp(16.0, 26.0);
@@ -150,7 +136,6 @@ class _ResetWeightSheetState extends State<ResetWeightSheet> {
         final content = Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // ─ Grab handle
             Container(
               width: 44,
               height: 5,
@@ -161,7 +146,7 @@ class _ResetWeightSheetState extends State<ResetWeightSheet> {
               ),
             ),
 
-            // ─ Illustration (circle with PNG)
+            // ─ Illustration 
             Container(
               height: illusSize,
               width: illusSize,

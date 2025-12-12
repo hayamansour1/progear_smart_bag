@@ -1,8 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 /// DebugFlags:
-/// مركز واحد نتحكم منه في كميات اللوق لكل جزء من النظام.
-/// لو حطيتي الفلاغ = false يوقف لوق هذا الجزء بالكامل في وضع الديبق.
+// False positives are okay here since this is only for debugging.
 class DebugFlags {
   static const bool bleVerbose = true;
   static const bool parserVerbose = true;

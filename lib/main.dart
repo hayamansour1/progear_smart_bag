@@ -34,7 +34,6 @@ Future<void> main() async {
 
   // Init local store used for unread badges/dots
   await ActivitySeenStore.instance.init();
-  // LastControllerStore ما يحتاج init صريح، يشتغل lazy من نفسه
 
   runApp(
     MultiProvider(
@@ -51,10 +50,8 @@ Future<void> main() async {
             final ctrl = BatteryController(
               BagParser(),
               repository: repo,
-              // controllerID الفعلي ينعرف لاحقاً من الـ BLE + LastControllerStore
             );
 
-            // نحاول نجيب آخر حالة بطارية من الـ DB (لو قدر يلاقي controllerID)
             ctrl.boot();
             return ctrl;
           },

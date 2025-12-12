@@ -16,9 +16,6 @@ import 'package:progear_smart_bag/features/home/logic/battery_bridge.dart';
 import 'package:progear_smart_bag/features/home/presentation/widgets/set_expected_weight_sheet.dart';
 import 'package:progear_smart_bag/shared/widgets/progear_toast.dart';
 
-/// Sheet لعرض أجهزة البلوتوث.
-/// parentContext موجود للحاجة المستقبلية لو حابين نستخدمه، لكن حالياً
-/// كل شيء يعتمد على context الخاص بالشيت نفسه.
 class ShowBluetoothDevices extends StatelessWidget {
   final BuildContext parentContext;
 
@@ -33,12 +30,10 @@ class ShowBluetoothDevices extends StatelessWidget {
     required BluetoothController btCtrl,
     required BluetoothDevice device,
   }) async {
-    // لو فيه عملية جارية على نفس الديفايس نتجاهل
     if (btCtrl.isDeviceLoading(device.remoteId.str)) {
       return;
     }
 
-    // لو متصل → نفصل و نرجع
     if (device.isConnected) {
       await btCtrl.disconnectDevice(device);
       return;
@@ -51,7 +46,6 @@ class ShowBluetoothDevices extends StatelessWidget {
     final batteryCtrl = context.read<BatteryController>();
 
     try {
-      // نوقف الاسكان قبل الاتصال
       await btCtrl.stopScan();
 
       // 1) connect
@@ -70,7 +64,6 @@ class ShowBluetoothDevices extends StatelessWidget {
         final isInUse = msg.contains('controller_in_use') ||
             detail.contains('already paired with another account');
 
-        // نفصل في كل الأحوال
         if (device.isConnected) {
           await btCtrl.disconnectDevice(device);
         }
@@ -132,7 +125,7 @@ class ShowBluetoothDevices extends StatelessWidget {
         controllerID: cid,
       );
 
-      // 5) نشيك expectedWeight في الـ DB
+      // 5) check if we need to show expected weight sheet
       bool shouldShowSetSheet = false;
       try {
         final row = await sb
@@ -146,10 +139,10 @@ class ShowBluetoothDevices extends StatelessWidget {
           shouldShowSetSheet = true;
         }
       } catch (_) {
-        // لو فشلنا في القراءة من الـ DB ما نوقف الكونكت، بس ما نعرض الشيت
+        // If we fail to read from the DB, don't stop the connection, just don't show the sheet
       }
 
-      // 6) لو نحتاج baseline نعرض الشيت فوق شيت البلوتوث
+      // 6) show expected weight sheet if needed
       if (shouldShowSetSheet) {
         if (!context.mounted) return;
 
@@ -166,14 +159,14 @@ class ShowBluetoothDevices extends StatelessWidget {
         }
       }
 
-      // 7) بعد ما نخلص كله نقفل شيت البلوتوث
+
       if (!context.mounted) return;
 
       if (nav.canPop()) {
         nav.pop();
       }
 
-      // 8) Toast نجاح
+    // success toast 
       ProGearToast.show(
         'Bag connected successfully.',
         style: ToastStyle.success,
@@ -202,7 +195,6 @@ class ShowBluetoothDevices extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<BluetoothController>(
       builder: (context, controller, child) {
-        // Auto-start scan لما تفتح الشيت
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!controller.isScanning && controller.devices.isEmpty) {
             controller.startScan();
