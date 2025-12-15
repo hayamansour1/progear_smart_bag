@@ -171,7 +171,8 @@ Additional components such as database scripts and project documentation are inc
 ## Team Members  
 
 ### Haya Mansour Bin Samih  
-Responsible for system protocol design, overall system architecture, full mobile application development, BLE data processing, and firmware–application integration workflow.
+Responsible for overall system architecture, custom BLE protocol design, full mobile application development, backend database design and integration using Supabase, BLE data processing, and firmware–application integration workflow.
+
 
 ### Hessa Almaarik  
 Responsible for implementing the Bluetooth Low Energy (BLE) scanning feature and establishing device connection within the mobile application.
