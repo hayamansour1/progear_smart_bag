@@ -1,0 +1,44 @@
+# Flutter/Dart
+.dart_tool/
+.packages
+.pub-cache/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.flutter-versions
+pubspec.lock
+
+# Env / secrets
+.env
+.env.*
+
+# Android
+**/android/.gradle/
+**/android/app/build/
+*.iml
+
+# iOS
+**/ios/Pods/
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+**/ios/Runner.xcworkspace/
+**/ios/Runner/GeneratedPluginRegistrant.*
+
+# macOS
+**/macos/Flutter/GeneratedPluginRegistrant.swift
+
+# Windows/Linux
+**/windows/flutter/GeneratedPluginRegistrant.*
+**/linux/flutter/GeneratedPluginRegistrant.*
+
+# VS Code / IntelliJ
+.vscode/
+.idea/
+*.ipr
+*.iws
+*.iml
+
+# Temporary files
+*~
+*.tmp
+*.swp

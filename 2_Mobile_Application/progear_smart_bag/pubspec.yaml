@@ -1,0 +1,51 @@
+name: progear_smart_bag
+description: A smart bag flutter application.
+publish_to: "none"
+
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.2
+  mesh: ^0.5.0
+  intl: ^0.19.0
+  cupertino_battery_indicator: ^1.0.3
+  shared_preferences: ^2.2.2
+  
+
+  google_fonts: ^6.1.0
+  supabase_flutter: ^2.10.1
+  flutter_dotenv: ^5.1.0
+  go_router: ^14.2.0
+  # blue bluetooth
+  flutter_blue_plus: ^2.0.0
+  # permission app
+  permission_handler: ^12.0.1
+  # open settings app
+  app_settings: ^6.1.1
+  # manage state provider
+  provider: ^6.1.5+1
+  # Custom loading
+  flutter_spinkit: ^5.2.2
+  # Custom Dialog
+  awesome_dialog: ^3.2.1
+  # Custom Toast
+  fluttertoast: ^9.0.0
+  # Logger
+  logger: ^2.6.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - .env
