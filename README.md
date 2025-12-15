@@ -4,7 +4,7 @@ Smart IoT-Enabled Bag for Battery Monitoring, Weight Tracking, and Real-Time BLE
 
 ---
 
-## Overview  
+## Project Overview 
 ProGear Smart Bag is an integrated hardware–software system designed to enhance user safety and convenience through real-time monitoring. The system combines embedded sensors, BLE communication, and a mobile application to provide weight tracking, battery level monitoring, and automated calibration features.
 
 The solution is implemented using ESP32 hardware, HX711 load cells, a custom BLE protocol, and a Flutter-based mobile application connected to Supabase.
@@ -138,26 +138,24 @@ Unzip the project folder.
 ### Step 5: Device Pairing  
 1. Scan for nearby devices in the app.  
 2. Connect to the ProGear Smart Bag.  
-3. The system will determine whether the device is new or previously initialized.  
+3. The system will determine whether the device is new or previously initialized.
+
+> **Note:** This project requires a physical ESP32 device for full functionality.
 
 ---
 
-## Project Structure  
+## Project Structure
 
-### Mobile App  
-lib/  
-  core/  
-  features/  
-    home/  
-    bag/  
-    weight/  
-    bluetooth/  
-  services/  
-  main.dart  
+The project follows a unified repository structure that integrates both hardware and software components.
 
-### Firmware  
-firmware/  
-progear.ino
+- **Firmware**  
+  Contains the ESP32 firmware responsible for BLE communication, weight measurement, battery monitoring, and calibration logic.
+
+- **Mobile Application**  
+  A Flutter-based mobile application that handles device pairing, real-time data visualization, user authentication, and system control through BLE and cloud integration.
+
+Additional components such as database scripts and project documentation are included in the repository to support deployment, testing, and academic reporting.
+
 
 ---
 
